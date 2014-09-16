@@ -9,7 +9,13 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ToggleButton;
 
-import java.util.List;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 
 
 /**
@@ -23,8 +29,10 @@ import java.util.List;
 public class TrainingFragment extends Fragment {
 
 	private final String TAG = "TrainingFragment";
-	private float[][] gestureDataContainer;
+	private float[][] gestureDataContainer = new float[100][3]; //Capacity for a ~2 second gesture
+
 	private int rowsFilled;
+
 
 	//Creates new instances of fragment
     public static TrainingFragment newInstance() {
@@ -80,7 +88,6 @@ public class TrainingFragment extends Fragment {
 						MainActivity.currTrainingSetName += trainingSet;
 						MainActivity.toast("Learning mode start for " + trainingSet + " gesture " + "\"" + gesture + "\"", getActivity().getApplicationContext());
 
-						gestureDataContainer = new float[100][3]; //Capacity for a ~2 second gesture
 						rowsFilled = 0;
 						//Accel data
 						((MainActivity) getActivity()).startAccelerometer();
@@ -123,13 +130,70 @@ public class TrainingFragment extends Fragment {
 		return v;
     }
 
+	private final String saveFileName = "/GestureLearnerData_1.txt";
+
 	public void collectData(float[] xyz) {
 		if(rowsFilled < gestureDataContainer.length) {
-			gestureDataContainer[rowsFilled++] = xyz;
+			gestureDataContainer[rowsFilled][0] = xyz[0];
+			gestureDataContainer[rowsFilled][1] = xyz[1];
+			gestureDataContainer[rowsFilled][2] = xyz[2];
+			rowsFilled++;
+
 		} else {
 			((MainActivity) getActivity()).stopAccelerometer();
 			Log.i(TAG, "gestureDataContainer filled. Writing data.");
+
+			String filePath = getActivity().getFilesDir() + saveFileName;
+			try {
+				BufferedWriter buf = new BufferedWriter(new FileWriter(filePath));
+				for (int i = 0; i < gestureDataContainer.length; i++) {
+					writeLineToFile(buf, gestureDataContainer[i][0] + "," + gestureDataContainer[i][1] + "," + gestureDataContainer[i][2]);
+				}
+				writeLineToFile(buf, "\n");
+				buf.close();
+			} catch(Exception e) {
+				e.printStackTrace();
+			}
+
+			Log.i("RESULT", readFromFile(saveFileName));
+
+			rowsFilled = 0;
 		}
+	}
+
+
+	private void writeLineToFile(BufferedWriter buf, String data) {
+		try {
+			buf.write(data, 0, data.length());
+			buf.newLine();
+		}
+		catch (IOException e) {
+			Log.e(TAG, "File write failed: " + e.toString());
+		}
+	}
+
+
+	private String readFromFile(String filename) {
+		String ret = null;
+		try {
+			BufferedReader buf = new BufferedReader(new FileReader(getActivity().getFilesDir() + filename));
+			String receiveString = "";
+			StringBuilder stringBuilder = new StringBuilder();
+
+			while ( (receiveString = buf.readLine()) != null ) {
+				stringBuilder.append(receiveString).append('\n');
+			}
+			ret = stringBuilder.toString();
+			buf.close();
+		}
+		catch (FileNotFoundException e) {
+			Log.e(TAG, "File not found: " + e.toString());
+		}
+		catch (IOException e) {
+			Log.e(TAG, "Can not read file: " + e.toString());
+		}
+
+		return ret;
 	}
 
 
