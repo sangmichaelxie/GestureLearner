@@ -1,6 +1,8 @@
 package com.michaelxie.gesturelearner;
+import android.content.Context;
 import android.os.Bundle;
 import android.app.Fragment;
+import android.os.Environment;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -9,13 +11,19 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ToggleButton;
 
+import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 
 
 /**
@@ -47,9 +55,14 @@ public class TrainingFragment extends Fragment {
 	private ToggleButton toggleLearnModeButton;
 	private boolean isLearning;
 
+	File dir, root;
+
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		root = android.os.Environment.getExternalStorageDirectory();
+		dir = new File (root.getAbsolutePath() + saveDir);
+		dir.mkdirs();
 	}
 
     @Override
@@ -130,7 +143,8 @@ public class TrainingFragment extends Fragment {
 		return v;
     }
 
-	private final String saveFileName = "/GestureLearnerData_1.txt";
+	private final String saveFileName = "GestureLearnerData_1.txt";
+	private final String saveDir = "/GestureLearner";
 
 	public void collectData(float[] xyz) {
 		if(rowsFilled < gestureDataContainer.length) {
@@ -142,15 +156,12 @@ public class TrainingFragment extends Fragment {
 		} else {
 			((MainActivity) getActivity()).stopAccelerometer();
 			Log.i(TAG, "gestureDataContainer filled. Writing data.");
-
-			String filePath = getActivity().getFilesDir() + saveFileName;
 			try {
-				BufferedWriter buf = new BufferedWriter(new FileWriter(filePath));
-				for (int i = 0; i < gestureDataContainer.length; i++) {
-					writeLineToFile(buf, gestureDataContainer[i][0] + "," + gestureDataContainer[i][1] + "," + gestureDataContainer[i][2]);
+				writeLineToFile(saveFileName, gestureName.getText().toString()); //Label
+				for (int i = 0; i < gestureDataContainer.length; i++) { //Data
+					writeLineToFile(saveFileName, gestureDataContainer[i][0] + "," + gestureDataContainer[i][1] + "," + gestureDataContainer[i][2]);
 				}
-				writeLineToFile(buf, "\n");
-				buf.close();
+				writeLineToFile(saveFileName, "\n");
 			} catch(Exception e) {
 				e.printStackTrace();
 			}
@@ -162,10 +173,13 @@ public class TrainingFragment extends Fragment {
 	}
 
 
-	private void writeLineToFile(BufferedWriter buf, String data) {
+	private void writeLineToFile(String filename, String data) {
 		try {
-			buf.write(data, 0, data.length());
-			buf.newLine();
+			File file = new File(dir, filename);
+			BufferedWriter bw = new BufferedWriter(new FileWriter(file, true));
+			bw.write(data);
+			bw.newLine();
+			bw.close();
 		}
 		catch (IOException e) {
 			Log.e(TAG, "File write failed: " + e.toString());
@@ -175,8 +189,10 @@ public class TrainingFragment extends Fragment {
 
 	private String readFromFile(String filename) {
 		String ret = null;
+
 		try {
-			BufferedReader buf = new BufferedReader(new FileReader(getActivity().getFilesDir() + filename));
+			File file = new File(dir, filename);
+			BufferedReader buf = new BufferedReader(new FileReader(file));
 			String receiveString = "";
 			StringBuilder stringBuilder = new StringBuilder();
 
@@ -185,6 +201,7 @@ public class TrainingFragment extends Fragment {
 			}
 			ret = stringBuilder.toString();
 			buf.close();
+
 		}
 		catch (FileNotFoundException e) {
 			Log.e(TAG, "File not found: " + e.toString());
@@ -196,6 +213,23 @@ public class TrainingFragment extends Fragment {
 		return ret;
 	}
 
+	private boolean checkExternalMedia(){
+		boolean mExternalStorageAvailable = false;
+		boolean mExternalStorageWriteable = false;
+		String state = Environment.getExternalStorageState();
 
+		if (Environment.MEDIA_MOUNTED.equals(state)) {
+			// Can read and write the media
+			mExternalStorageAvailable = mExternalStorageWriteable = true;
+		} else if (Environment.MEDIA_MOUNTED_READ_ONLY.equals(state)) {
+			// Can only read the media
+			mExternalStorageAvailable = true;
+			mExternalStorageWriteable = false;
+		} else {
+			// Can't read or write
+			mExternalStorageAvailable = mExternalStorageWriteable = false;
+		}
+		return mExternalStorageAvailable && mExternalStorageWriteable;
+	}
 
 }

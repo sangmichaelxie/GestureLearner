@@ -125,8 +125,6 @@ public class MainActivity extends Activity implements GestureDetector.OnGestureL
 		// The light sensor returns a single value.
 		// Many sensors return 3 values, one for each axis.
 		float[] xyz = event.values;
-		Log.i(TAG, "" + xyz[0] + "," + xyz[1] + "," + xyz[2]);
-
 		if(isTrainingModeOn) {
 			trainingFragment.collectData(xyz);
 		} else {
