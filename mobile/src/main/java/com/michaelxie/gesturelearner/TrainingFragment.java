@@ -98,14 +98,6 @@ public class TrainingFragment extends Fragment {
 					} catch(Exception e) {
 						e.printStackTrace();
 					}
-				} else {
-					try {
-						MainActivity.toast("Learning mode off", getActivity().getApplicationContext());
-					} catch(Exception e) {
-						e.printStackTrace();
-					}
-					toggleLearnModeButton.setText(toggleLearnModeButton.getTextOff());
-					isLearning = false;
 				}
 			}
 		});
@@ -132,7 +124,6 @@ public class TrainingFragment extends Fragment {
 		return v;
     }
 
-	private final String saveFileName = "GestureLearnerData_1.txt";
 	private final String saveDir = "/GestureLearner";
 
 	public void collectData(float[] xyz) {
@@ -143,6 +134,9 @@ public class TrainingFragment extends Fragment {
 			rowsFilled++;
 
 		} else {
+			//File name based on training set
+			final String saveFileName = MainActivity.currTrainingSetName + ".txt";
+
 			((MainActivity) getActivity()).stopAccelerometer();
 			Log.i(TAG, "gestureDataContainer filled. Writing data.");
 			try {
