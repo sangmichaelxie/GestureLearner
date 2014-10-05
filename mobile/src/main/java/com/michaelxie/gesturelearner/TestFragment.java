@@ -58,14 +58,12 @@ public class TestFragment extends Fragment {
 					try {
 						isClassifying = true;
 						toggleTestModeButton.setText(toggleTestModeButton.getTextOn());
-						MainActivity.recognitionService.startClassificationMode(MainActivity.currTrainingSetName);
-						MainActivity.toast("Listening for gestures", getActivity().getApplicationContext());
+						MainActivity.toast("Listening for gestures not implemented yet", getActivity().getApplicationContext());
 					} catch(Exception e) {
 						e.printStackTrace();
 					}
 				} else {
 					try {
-						MainActivity.recognitionService.stopClassificationMode();
 						MainActivity.toast("Stopped listening for gestures", getActivity().getApplicationContext());
 					} catch(Exception e) {
 						e.printStackTrace();

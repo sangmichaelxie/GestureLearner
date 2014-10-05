@@ -1,5 +1,4 @@
 package com.michaelxie.gesturelearner;
-import android.content.Context;
 import android.os.Bundle;
 import android.app.Fragment;
 import android.os.Environment;
@@ -11,19 +10,13 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ToggleButton;
 
-import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
 
 
 /**
@@ -35,12 +28,17 @@ import java.io.PrintWriter;
  *
  */
 public class TrainingFragment extends Fragment {
-
 	private final String TAG = "TrainingFragment";
 	private float[][] gestureDataContainer = new float[100][3]; //Capacity for a ~2 second gesture
-
 	private int rowsFilled;
 
+	//UI components
+	private Button clearDataButton;
+	private EditText trainingSetName, gestureName;
+	private ToggleButton toggleLearnModeButton;
+	private boolean isLearning;
+
+	File dir, root; //File storage
 
 	//Creates new instances of fragment
     public static TrainingFragment newInstance() {
@@ -50,12 +48,6 @@ public class TrainingFragment extends Fragment {
     public TrainingFragment() {
         // Required empty public constructor
     }
-	private Button clearDataButton;
-	private EditText trainingSetName, gestureName;
-	private ToggleButton toggleLearnModeButton;
-	private boolean isLearning;
-
-	File dir, root;
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -96,7 +88,6 @@ public class TrainingFragment extends Fragment {
 					try {
 						isLearning = true;
 						toggleLearnModeButton.setText(toggleLearnModeButton.getTextOn());
-						MainActivity.recognitionService.startLearnMode(trainingSet, gesture);
 						MainActivity.currTrainingSetName = "";
 						MainActivity.currTrainingSetName += trainingSet;
 						MainActivity.toast("Learning mode start for " + trainingSet + " gesture " + "\"" + gesture + "\"", getActivity().getApplicationContext());
@@ -109,7 +100,6 @@ public class TrainingFragment extends Fragment {
 					}
 				} else {
 					try {
-						MainActivity.recognitionService.stopLearnMode();
 						MainActivity.toast("Learning mode off", getActivity().getApplicationContext());
 					} catch(Exception e) {
 						e.printStackTrace();
@@ -130,7 +120,6 @@ public class TrainingFragment extends Fragment {
 				}
 
 				try {
-					MainActivity.recognitionService.deleteTrainingSet(trainingSet);
 					MainActivity.toast("Data for training set " + trainingSet + " cleared.", getActivity().getApplicationContext());
 				} catch(Exception e) {
 					e.printStackTrace();
@@ -169,6 +158,14 @@ public class TrainingFragment extends Fragment {
 			Log.i("RESULT", readFromFile(saveFileName));
 
 			rowsFilled = 0;
+
+			try {
+				MainActivity.toast("Wrote training example. Learning mode off", getActivity().getApplicationContext());
+			} catch(Exception e) {
+				e.printStackTrace();
+			}
+			toggleLearnModeButton.setText(toggleLearnModeButton.getTextOff());
+			isLearning = false;
 		}
 	}
 

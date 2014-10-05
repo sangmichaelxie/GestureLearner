@@ -40,19 +40,20 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_horizontal"
-                android:text = "default"
+                android:hint="@string/training_set_name_hint"
                 android:id="@+id/training_set"/>
 
             <EditText
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:id="@+id/gesture_name"
+                android:hint="@string/training_example_name_hint"
                 android:layout_gravity="center_horizontal"/>
 
             <Button
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Clear Data"
+                android:text="@string/clear_data"
                 android:id="@+id/clear_data"
                 android:layout_gravity="center_horizontal"/>
         </LinearLayout>

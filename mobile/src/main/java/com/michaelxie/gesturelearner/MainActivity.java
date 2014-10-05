@@ -31,47 +31,6 @@ public class MainActivity extends Activity implements GestureDetector.OnGestureL
 	private SensorManager mSensorManager;
 	private Sensor accelerometer;
 
-	IBinder gestureListenerStub = new IGestureRecognitionListener.Stub() {
-		@Override
-		public void onGestureLearned(String gestureName) throws RemoteException {
-			System.out.println("Gesture" + gestureName + "learned!");
-		}
-
-		@Override
-		public void onGestureRecognized(Distribution distribution) throws RemoteException {
-			System.out.println(String.format("%s %f", distribution.getBestMatch(),distribution.getBestDistance()));
-			final String classification = distribution.getBestMatch();
-			final double distance = distribution.getBestDistance();
-			runOnUiThread(new Runnable() {
-				@Override
-				public void run() {
-					String result = classification;
-					if(distance > 5) result = "N/A";
-					testFragment.displayResult(result);
-				}
-			});
-		}
-
-		@Override
-		public void onTrainingSetDeleted(String trainingSet) throws RemoteException {
-			System.out.println("Training Set " + trainingSet + " deleted!");
-		}
-	};
-
-	public static IGestureRecognitionService recognitionService;
-	private final ServiceConnection gestureConnection = new ServiceConnection() {
-
-		public void onServiceConnected(ComponentName className, IBinder service) {
-			recognitionService = IGestureRecognitionService.Stub.asInterface(service);
-			try {
-				recognitionService.registerListener(IGestureRecognitionListener.Stub.asInterface(gestureListenerStub));
-			} catch (RemoteException e) {
-				e.printStackTrace();
-			}
-		}
-		public void onServiceDisconnected(ComponentName className) {}
-	};
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -86,10 +45,6 @@ public class MainActivity extends Activity implements GestureDetector.OnGestureL
 			//End activity
 			this.finish();
 		}
-
-
-		Intent gestureBindIntent = new Intent("de.dfki.ccaal.gestures.GESTURE_RECOGNIZER");
-		bindService(gestureBindIntent, gestureConnection, Context.BIND_AUTO_CREATE);
 
 		if (savedInstanceState == null) {
 			testFragment = TestFragment.newInstance();
@@ -192,7 +147,6 @@ public class MainActivity extends Activity implements GestureDetector.OnGestureL
 	@Override
 	public boolean onSingleTapUp(MotionEvent event) {
 		Log.i(TAG, "SingleTapUp");
-
 		return true;
 	}
 
