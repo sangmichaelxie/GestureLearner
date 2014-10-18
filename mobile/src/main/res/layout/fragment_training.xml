@@ -39,13 +39,6 @@
             <EditText
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:hint="@string/training_set_name_hint"
-                android:id="@+id/training_set"/>
-
-            <EditText
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
                 android:id="@+id/gesture_name"
                 android:hint="@string/training_example_name_hint"
                 android:layout_gravity="center_horizontal"/>
@@ -54,6 +47,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/clear_data"
+                android:paddingLeft="50dp"
+                android:paddingRight="50dp"
                 android:id="@+id/clear_data"
                 android:layout_gravity="center_horizontal"/>
         </LinearLayout>

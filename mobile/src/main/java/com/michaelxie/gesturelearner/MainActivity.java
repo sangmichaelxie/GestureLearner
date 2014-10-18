@@ -75,11 +75,25 @@ public class MainActivity extends Activity implements GestureDetector.OnGestureL
 		// Do something here if sensor accuracy changes.
 	}
 
+	public static double[] convertFloatsToDoubles(float[] input)
+	{
+		if (input == null)
+		{
+			return null; // Or throw an exception - your choice
+		}
+		double[] output = new double[input.length];
+		for (int i = 0; i < input.length; i++)
+		{
+			output[i] = input[i];
+		}
+		return output;
+	}
+
 	@Override
 	public final void onSensorChanged(SensorEvent event) {
 		// The light sensor returns a single value.
 		// Many sensors return 3 values, one for each axis.
-		float[] xyz = event.values;
+		double[] xyz = convertFloatsToDoubles(event.values);
 		if(isTrainingModeOn) {
 			trainingFragment.collectData(xyz);
 		} else {
