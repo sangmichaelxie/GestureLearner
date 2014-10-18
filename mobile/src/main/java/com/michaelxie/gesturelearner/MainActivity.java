@@ -1,24 +1,17 @@
 package com.michaelxie.gesturelearner;
 
 import android.app.Activity;
-import android.content.ComponentName;
 import android.content.Context;
-import android.content.Intent;
-import android.content.ServiceConnection;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.os.IBinder;
-import android.os.RemoteException;
 import android.os.Bundle;
 import android.support.v4.view.GestureDetectorCompat;
 import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.widget.Toast;
-
-import de.dfki.ccaal.gestures.*;
 
 
 public class MainActivity extends Activity implements GestureDetector.OnGestureListener, SensorEventListener{
@@ -75,11 +68,25 @@ public class MainActivity extends Activity implements GestureDetector.OnGestureL
 		// Do something here if sensor accuracy changes.
 	}
 
+	public static double[] convertFloatsToDoubles(float[] input)
+	{
+		if (input == null)
+		{
+			return null; // Or throw an exception - your choice
+		}
+		double[] output = new double[input.length];
+		for (int i = 0; i < input.length; i++)
+		{
+			output[i] = input[i];
+		}
+		return output;
+	}
+
 	@Override
 	public final void onSensorChanged(SensorEvent event) {
 		// The light sensor returns a single value.
 		// Many sensors return 3 values, one for each axis.
-		float[] xyz = event.values;
+		double[] xyz = convertFloatsToDoubles(event.values);
 		if(isTrainingModeOn) {
 			trainingFragment.collectData(xyz);
 		} else {

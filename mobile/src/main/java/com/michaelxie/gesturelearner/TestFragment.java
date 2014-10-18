@@ -1,7 +1,6 @@
 package com.michaelxie.gesturelearner;
 
 import android.app.Activity;
-import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.app.Fragment;
 import android.view.LayoutInflater;
@@ -47,6 +46,7 @@ public class TestFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
+		// Inflate the layout for this fragment
 		View v = inflater.inflate(R.layout.fragment_test, container, false);
 		text = (TextView) v.findViewById(R.id.result_text);
 		toggleTestModeButton = (ToggleButton) v.findViewById(R.id.toggleTestModeButton);
@@ -73,7 +73,6 @@ public class TestFragment extends Fragment {
 				}
 			}
 		});
-        // Inflate the layout for this fragment
         return v;
     }
 

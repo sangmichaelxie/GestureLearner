@@ -17,6 +17,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 
 
 /**
@@ -29,12 +30,12 @@ import java.io.IOException;
  */
 public class TrainingFragment extends Fragment {
 	private final String TAG = "TrainingFragment";
-	private float[][] gestureDataContainer = new float[100][3]; //Capacity for a ~2 second gesture
-	private int rowsFilled;
+	private double[][] gestureDataContainer = new double[3][100]; //Capacity for a ~2 second gesture
+	private int numFilled;
 
 	//UI components
 	private Button clearDataButton;
-	private EditText trainingSetName, gestureName;
+	private EditText gestureNameUI;
 	private ToggleButton toggleLearnModeButton;
 	private boolean isLearning;
 
@@ -63,8 +64,8 @@ public class TrainingFragment extends Fragment {
 		// Inflate the layout for this fragment
 		View v = inflater.inflate(R.layout.fragment_training, container, false);
 
-		trainingSetName = (EditText) v.findViewById(R.id.training_set);
-		gestureName = (EditText) v.findViewById(R.id.gesture_name);
+
+		gestureNameUI = (EditText) v.findViewById(R.id.gesture_name);
 		toggleLearnModeButton = (ToggleButton) v.findViewById(R.id.toggleButton);
 		clearDataButton = (Button) v.findViewById(R.id.clear_data);
 		isLearning = false;
@@ -75,11 +76,10 @@ public class TrainingFragment extends Fragment {
 		toggleLearnModeButton.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View view) {
-				String trainingSet = trainingSetName.getText().toString();
-				String gesture = gestureName.getText().toString();
+				String gesture = gestureNameUI.getText().toString();
 
-				if(trainingSet.trim().length() == 0 || gesture.trim().length() == 0) {
-					MainActivity.toast("Please provide the training set name and gesture name.", getActivity().getApplicationContext());
+				if(gesture.trim().length() == 0) {
+					MainActivity.toast("Please provide the gesture name.", getActivity().getApplicationContext());
 					toggleLearnModeButton.setText(toggleLearnModeButton.getTextOff());
 					return;
 				}
@@ -88,11 +88,9 @@ public class TrainingFragment extends Fragment {
 					try {
 						isLearning = true;
 						toggleLearnModeButton.setText(toggleLearnModeButton.getTextOn());
-						MainActivity.currTrainingSetName = "";
-						MainActivity.currTrainingSetName += trainingSet;
-						MainActivity.toast("Learning mode start for " + trainingSet + " gesture " + "\"" + gesture + "\"", getActivity().getApplicationContext());
+						MainActivity.toast("Learning mode start for gesture " + "\"" + gesture + "\"", getActivity().getApplicationContext());
 
-						rowsFilled = 0;
+						numFilled = 0;
 						//Accel data
 						((MainActivity) getActivity()).startAccelerometer();
 					} catch(Exception e) {
@@ -105,14 +103,17 @@ public class TrainingFragment extends Fragment {
 		clearDataButton.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View view) {
-				String trainingSet = trainingSetName.getText().toString();
-				if(trainingSet.trim().length() == 0) {
-					MainActivity.toast("Please provide the training set name to delete.", getActivity().getApplicationContext());
-					return;
-				}
-
 				try {
-					MainActivity.toast("Data for training set " + trainingSet + " cleared.", getActivity().getApplicationContext());
+					String gestureName = gestureNameUI.getText().toString();
+					String saveFileName = gestureName + ".txt";
+					File file = new File(saveFileName);
+					boolean success = file.delete();
+					if(success) {
+						MainActivity.toast("Data for gesture " + gestureNameUI + " cleared.", getActivity().getApplicationContext());
+					} else {
+						MainActivity.toast("Error clearing data for gesture " + gestureNameUI + ".", getActivity().getApplicationContext());
+
+					}
 				} catch(Exception e) {
 					e.printStackTrace();
 				}
@@ -124,34 +125,55 @@ public class TrainingFragment extends Fragment {
 		return v;
     }
 
+	@Override
+	public void onResume() {
+		super.onResume();
+		toggleLearnModeButton.setChecked(false);
+	}
+
 	private final String saveDir = "/GestureLearner";
 
-	public void collectData(float[] xyz) {
-		if(rowsFilled < gestureDataContainer.length) {
-			gestureDataContainer[rowsFilled][0] = xyz[0];
-			gestureDataContainer[rowsFilled][1] = xyz[1];
-			gestureDataContainer[rowsFilled][2] = xyz[2];
-			rowsFilled++;
+	public void collectData(double[] xyz) {
+		if(numFilled < gestureDataContainer[0].length) {
+			gestureDataContainer[0][numFilled] = xyz[0];
+			gestureDataContainer[1][numFilled] = xyz[1];
+			gestureDataContainer[2][numFilled] = xyz[2];
+			numFilled++;
 
 		} else {
-			//File name based on training set
-			final String saveFileName = MainActivity.currTrainingSetName + ".txt";
+			//File name based on gesture name
+			String gestureName = gestureNameUI.getText().toString();
+			String saveFileName = gestureName + ".txt";
 
 			((MainActivity) getActivity()).stopAccelerometer();
 			Log.i(TAG, "gestureDataContainer filled. Writing data.");
 			try {
-				writeLineToFile(saveFileName, gestureName.getText().toString()); //Label
-				for (int i = 0; i < gestureDataContainer.length; i++) { //Data
-					writeLineToFile(saveFileName, gestureDataContainer[i][0] + "," + gestureDataContainer[i][1] + "," + gestureDataContainer[i][2]);
+				/*writes a training example in format [x1.....xn y1....yn z1.....zn]*/
+				
+				for (int i = 0; i < gestureDataContainer[0].length; i++) { //Data
+					writeToFile(saveFileName, gestureDataContainer[0][i] + " ");
 				}
-				writeLineToFile(saveFileName, "\n");
+				for (int i = 0; i < gestureDataContainer[1].length; i++) { //Data
+					writeToFile(saveFileName, gestureDataContainer[1][i] + " ");
+				}
+				for (int i = 0; i < gestureDataContainer[2].length; i++) { //Data
+					writeToFile(saveFileName, gestureDataContainer[2][i] + " ");
+				}
+				writeLineBreakToFile(saveFileName);
 			} catch(Exception e) {
 				e.printStackTrace();
 			}
 
-			Log.i("RESULT", readFromFile(saveFileName));
-
-			rowsFilled = 0;
+			double[][] data = readFromFile(saveFileName);
+			System.out.println(data.length);
+			System.out.println(data[0].length);
+			for(int i = 0; i < data.length; i++) {
+				for(int j = 0; j < data[0].length; j++) {
+					System.out.print(data[i][j] + " ");
+				}
+				System.out.println();
+			}
+			numFilled = 0;
 
 			try {
 				MainActivity.toast("Wrote training example. Learning mode off", getActivity().getApplicationContext());
@@ -164,11 +186,22 @@ public class TrainingFragment extends Fragment {
 	}
 
 
-	private void writeLineToFile(String filename, String data) {
+	private void writeToFile(String filename, String data) {
 		try {
 			File file = new File(dir, filename);
 			BufferedWriter bw = new BufferedWriter(new FileWriter(file, true));
 			bw.write(data);
+			bw.close();
+		}
+		catch (IOException e) {
+			Log.e(TAG, "File write failed: " + e.toString());
+		}
+	}
+
+	private void writeLineBreakToFile(String filename) {
+		try {
+			File file = new File(dir, filename);
+			BufferedWriter bw = new BufferedWriter(new FileWriter(file, true));
 			bw.newLine();
 			bw.close();
 		}
@@ -178,21 +211,25 @@ public class TrainingFragment extends Fragment {
 	}
 
 
-	private String readFromFile(String filename) {
-		String ret = null;
-
+	/*returns an m by n array of doubles, m being the number of training examples, and n the length of each training example*/
+	private double[][] readFromFile(String filename) {
+		ArrayList<double[]> container = new ArrayList<double[]>();
 		try {
 			File file = new File(dir, filename);
 			BufferedReader buf = new BufferedReader(new FileReader(file));
 			String receiveString = "";
-			StringBuilder stringBuilder = new StringBuilder();
-
 			while ( (receiveString = buf.readLine()) != null ) {
-				stringBuilder.append(receiveString).append('\n');
-			}
-			ret = stringBuilder.toString();
-			buf.close();
+				String[] trainingExampleStringArr = receiveString.split(" ");
+				double[] trainingExample = new double[trainingExampleStringArr.length];
 
+				for(int i = 0; i < trainingExampleStringArr.length; i++) {
+					trainingExample[i] = Double.valueOf(trainingExampleStringArr[i]);
+				}
+				container.add(trainingExample);
+			}
+			buf.close();
+			double[][] ret = new double[container.size()][];
+			return container.toArray(ret);
 		}
 		catch (FileNotFoundException e) {
 			Log.e(TAG, "File not found: " + e.toString());
@@ -200,8 +237,7 @@ public class TrainingFragment extends Fragment {
 		catch (IOException e) {
 			Log.e(TAG, "Can not read file: " + e.toString());
 		}
-
-		return ret;
+		return null;
 	}
 
 	private boolean checkExternalMedia(){
