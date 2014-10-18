@@ -123,7 +123,7 @@ public class TrainingFragment extends Fragment {
 
 		return v;
     }
-	
+
 	@Override
 	public void onResume() {
 		super.onResume();
