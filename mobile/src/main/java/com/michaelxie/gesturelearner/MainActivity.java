@@ -1,24 +1,17 @@
 package com.michaelxie.gesturelearner;
 
 import android.app.Activity;
-import android.content.ComponentName;
 import android.content.Context;
-import android.content.Intent;
-import android.content.ServiceConnection;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.os.IBinder;
-import android.os.RemoteException;
 import android.os.Bundle;
 import android.support.v4.view.GestureDetectorCompat;
 import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.widget.Toast;
-
-import de.dfki.ccaal.gestures.*;
 
 
 public class MainActivity extends Activity implements GestureDetector.OnGestureListener, SensorEventListener{
