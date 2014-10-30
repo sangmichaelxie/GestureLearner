@@ -1,21 +1,20 @@
 
 function classifyGestures
     clear all; clear;
-    
-    %Using the larger test data for training increases performance
-    O = load('O_test.txt');
-    X = load('X_test.txt');
-    Z = load('Z_test.txt');
-    num_features = size(O ,2);
+    O = load('O.txt');
+    X = load('X.txt');
+    Z = load('Z.txt');
+    num_features = size(O ,1) + size(X,1) + size(Z,1);
     plotGestureData(O, 1);
     plotGestureData(X, 2);
     plotGestureData(Z, 3);
     
     training_instance_matrix = [O; X; Z;];
     training_label_vector = [zeros(size(O, 1), 1); ones(size(X, 1), 1); 2 * ones(size(Z, 1), 1);];
-    
+    gamma = 1/num_features;
+    C = 0;  
     %radial basis (gaussian) SVM
-    model = svmtrain(training_label_vector, training_instance_matrix, '-s 0 -t 2')
+    model = svmtrain(training_label_vector, training_instance_matrix, '-s 0 -t 2 -c 1')
     train_predictions = svmpredict(training_label_vector, training_instance_matrix, model)
     test(model);
     
@@ -24,9 +23,9 @@ end
 
 
 function test(model)
-    O_test = load('O.txt');
-    X_test = load('X.txt');
-    Z_test = load('Z.txt');
+    O_test = load('O_test.txt');
+    X_test = load('X_test.txt');
+    Z_test = load('Z_test.txt');
     
     testing_instance_matrix = [O_test; X_test; Z_test;];
     testing_label_vector = [zeros(size(O_test, 1), 1); ones(size(X_test, 1), 1); 2 * ones(size(Z_test, 1), 1);];
