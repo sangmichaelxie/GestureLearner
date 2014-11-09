@@ -1,11 +1,12 @@
 
-function classifyGestures
+function classifyGestures  
     clear all; clear;
     
     %Using the larger test data for training increases performance
-    O = load('O_test.txt');
-    X = load('X_test.txt');
-    Z = load('Z_test.txt');
+    O = load('O.txt');
+    X = load('X.txt');
+    Z = load('Z.txt');
+      
     num_features = size(O ,2);
     plotGestureData(O, 1);
     plotGestureData(X, 2);
@@ -14,27 +15,68 @@ function classifyGestures
     training_instance_matrix = [O; X; Z;];
     training_label_vector = [zeros(size(O, 1), 1); ones(size(X, 1), 1); 2 * ones(size(Z, 1), 1);];
     
-    %radial basis (gaussian) SVM
-    model = svmtrain(training_label_vector, training_instance_matrix, '-s 0 -t 2')
-    train_predictions = svmpredict(training_label_vector, training_instance_matrix, model)
-    test(model);
+    
+    m = round(size(training_instance_matrix, 1) * 7 / 10);    
+    
+    numCorrect = 0;
+    %Resample
+    iterations = 1000;
+    for i = 1:iterations
+        [X_train, X_test, y_train, y_test] = getRandomSplitExamples(training_instance_matrix, training_label_vector, m);
+        %radial basis (gaussian) SVM
+        model = svmtrain(y_train, X_train, '-s 0 -t 2');
+        %Testing error
+        test_predictions = svmpredict(y_test, X_test, model);
+        numCorrect = numCorrect +  findNumCorrect(test_predictions, y_test);
+    end
+    accuracy = numCorrect / (iterations * (size(training_instance_matrix, 1) - m));
+    avgaccuracy = accuracy * 100
+    
+    %Training error - it's always 100%
+    %train_predictions = svmpredict(y_train, X_train, model);
+    
+    %Testing error
+    %test(model, X_test, y_test);
     
     
 end
 
-
-function test(model)
-    O_test = load('O.txt');
-    X_test = load('X.txt');
-    Z_test = load('Z.txt');
-    
-    testing_instance_matrix = [O_test; X_test; Z_test;];
-    testing_label_vector = [zeros(size(O_test, 1), 1); ones(size(X_test, 1), 1); 2 * ones(size(Z_test, 1), 1);];
-    
-    
-    [test_predictions, accuracy, decision_values] = svmpredict(testing_label_vector, testing_instance_matrix, model)
-
+function numCorrect = findNumCorrect(pred, actual)
+    numCorrect = 0;
+    for i = 1:size(pred, 1)
+        if pred(i, 1) == actual(i, 1)
+            numCorrect = numCorrect + 1;
+        end
+    end
 end
+
+function [X_train, X_test, y_train, y_test] = getRandomSplitExamples(X, y, m)
+    indices = datasample(1:size(X,1), m, 'Replace',false);
+    X_train = zeros(m, size(X,2));
+    X_test = zeros(size(X,1) - m, size(X,2));
+    y_train = zeros(m, 1);
+    y_test = zeros(size(y ,1) - m, 1);
+    
+    x_train_count = 1;
+    x_test_count = 1;
+    y_train_count = 1;
+    y_test_count = 1;
+    for i = 1:size(X,1)
+        if any(i==indices)
+            X_train(x_train_count, :) = X(i,:);
+            y_train(y_train_count, :) = y(i,:);
+            x_train_count = x_train_count + 1;
+            y_train_count = y_train_count + 1;
+        else
+            X_test(x_test_count, :) = X(i, :);
+            y_test(y_test_count, :) = y(i, :);
+            x_test_count = x_test_count + 1;
+            y_test_count = y_test_count + 1;
+        end
+        
+    end
+end
+
 
 function [X,Y,Z] = splitData(G)
     X = G(:, 1:100);
