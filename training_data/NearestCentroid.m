@@ -1,4 +1,4 @@
-function KNearestNeighbors  
+function NearestCentroid()
     clear all; clear;
     
     %Using the larger test data for training increases performance
@@ -8,40 +8,66 @@ function KNearestNeighbors
     
     
     training_instance_matrix = [O; X; Z;];
-    training_label_vector = [zeros(size(O, 1), 1); ones(size(X, 1), 1); 2 * ones(size(Z, 1), 1);];
+    training_label_vector = [zeros(size(O, 1), 1) + 1; 2 * ones(size(X, 1), 1); 3 * ones(size(Z, 1), 1);];
     training_instance_matrix = smoothts(training_instance_matrix, 'b', 25);
     
     m = round(size(training_instance_matrix, 1) * 7 / 10);    
     
     numCorrect = 0;
     numCorrectTrain = 0;
-    avgKFoldLoss = 0;
-    %Resample
-    iterations = 100;
+
+    iterations = 1000;
+    numCentroids = 3;
     for i = 1:iterations
         [X_train, X_test, y_train, y_test] = getRandomSplitExamples(training_instance_matrix, training_label_vector, m);
-        %K-Nearest-Neighbors
-        
-        %[idx, C] = kmeans(X_train, 3);
-        
-        mdl = ClassificationKNN.fit(X_train, y_train,'NumNeighbors',4);
-        cvmdl = crossval(mdl);
-        kloss = kfoldLoss(cvmdl);
-        avgKFoldLoss = avgKFoldLoss + kloss;
-        train_predictions = predict(mdl, X_train);
-        test_predictions = predict(mdl, X_test);   
+        %Nearest Centroid
+      
+        C = findCentroids(X_train, y_train, numCentroids);
         
         %Training error
+        train_predictions = nearestCentroidClassifier(C, X_train);
         numCorrectTrain = numCorrectTrain +  findNumCorrect(train_predictions, y_train);
         
         %Testing error
-        %test_predictions = nearestCentroidClassifier(C, X_test);
+        test_predictions = nearestCentroidClassifier(C, X_test);
         numCorrect = numCorrect +  findNumCorrect(test_predictions, y_test);
     end
-    avgKFoldLoss = avgKFoldLoss / iterations
     trainAccuracy = numCorrectTrain / (iterations * m )
-    testAccuracy = numCorrect / (iterations * (size(training_instance_matrix, 1) - m))    
+    testAccuracy = numCorrect / (iterations * (size(training_instance_matrix, 1) - m))   
+
+
+end
+
+function C = findCentroids(X_train, y_train, numCentroids)
+    C = zeros(numCentroids, size(X_train, 2));
+    sumClasses = zeros(1, 3);
+    for i = 1:size(X_train, 1)
+        C(y_train(i), :) = C(y_train(i), :) + X_train(i, :);   
+        sumClasses(y_train(i)) = sumClasses(y_train(i)) + 1;
+    end
     
+    for i = 1: size(C, 1)
+       C(i, :) =  C(i, :) ./ sumClasses(i);
+    end
+end
+
+function test_predictions = nearestCentroidClassifier(C, X_test)
+    test_predictions = zeros(size(X_test, 1), 1);
+    for i = 1:size(X_test, 1)
+        minClusterIndex = -1;
+        minNorm = -1;
+        for j = 1:size(C, 1)
+           if minClusterIndex == -1 || norm(C(j, :) - X_test(i, :)) <  minNorm
+               minClusterIndex = j;
+               minNorm = norm(C(j, :) - X_test(i, :));
+           end
+            
+        end
+        test_predictions(i) = minClusterIndex;
+        
+    end
+
+
 end
 
 function numCorrect = findNumCorrect(pred, actual)
