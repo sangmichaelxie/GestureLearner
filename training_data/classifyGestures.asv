@@ -15,30 +15,97 @@ function classifyGestures
     training_instance_matrix = [O; X; Z;];
     training_label_vector = [zeros(size(O, 1), 1); ones(size(X, 1), 1); 2 * ones(size(Z, 1), 1);];
     
+    %training_instance_matrix = zeroOutAndShift(training_instance_matrix);
+    %zeroing out doesn't work
+    
+    %Smoothing with box filter seems to work better than gaussian filter
+    training_instance_matrix = smoothts(training_instance_matrix, 'b', 25);
+    plotGestureData(training_instance_matrix(1:size(O, 1),:), 4);
     
     m = round(size(training_instance_matrix, 1) * 7 / 10);    
     
     numCorrect = 0;
+    numCorrectTrain = 0;
     %Resample
-    iterations = 10;
+    iterations = 1;
     for i = 1:iterations
         [X_train, X_test, y_train, y_test] = getRandomSplitExamples(training_instance_matrix, training_label_vector, m);
         %radial basis (gaussian) SVM
         model = svmtrain(y_train, X_train, '-s 0 -t 2');
+        cvmdl = crossval(model);
+        kloss = kfoldLoss(cvmdl);
+        %Training error - it's always 100%
+        train_predictions = svmpredict(y_train, X_train, model);
+        numCorrectTrain = numCorrectTrain +  findNumCorrect(train_predictions, y_train);
         %Testing error
         test_predictions = svmpredict(y_test, X_test, model);
         numCorrect = numCorrect +  findNumCorrect(test_predictions, y_test);
     end
-    accuracy = numCorrect / (iterations * (size(training_instance_matrix, 1) - m));
-    accuracy = accuracy * 100
+    trainAccuracy = numCorrectTrain / (iterations * m )
+    testAccuracy = numCorrect / (iterations * (size(training_instance_matrix, 1) - m))    
     
-    %Training error - it's always 100%
-    %train_predictions = svmpredict(y_train, X_train, model);
-    
-    %Testing error
-    %test(model, X_test, y_test);
-    
-    
+end
+
+function newX = zeroOutAndShift(X)
+    newX = zeros(size(X, 1), size(X, 2));
+    for i = 1:size(X,1)
+        for t = 2:(size(X, 2) / 3)
+            
+            accelVec = [X(i, t); X(i, 100 + t); X(i, 200 + t);];
+            accelVecPrev = [X(i, t - 1); X(i, 100 + t - 1); X(i, 200 + t - 1);];
+            if norm(accelVec - accelVecPrev) < 0.5
+                X(i, t) = 0; 
+                X(i, t + 100) = 0; 
+                X(i, t + 200) = 0;
+            end
+        end
+        
+        firstNonZeroIndex  = -1;
+        X(i, 1) = 0;
+        X(i, 101) = 0;
+        X(i, 201) = 0;
+        X(i, 100) = 0;
+        X(i, 200) = 0;
+        X(i, 300) = 0;
+        for t = 2:(size(X, 2) / 3 - 1)
+            accelVecForward = [X(i, t + 1); X(i, 100 + t + 1); X(i, 200 + t + 1);];
+            accelVec = [X(i, t); X(i, 100 + t); X(i, 200 + t);];
+            accelVecPrev = [X(i, t - 1); X(i, 100 + t - 1); X(i, 200 + t - 1);];
+            diff = accelVecForward - accelVecPrev;
+            if diff(1) == 0 || diff(2) == 0 || diff(3) == 0
+                X(i, t) = 0; 
+                X(i, t + 100) = 0; 
+                X(i, t + 200) = 0;
+            else 
+                if firstNonZeroIndex == -1
+                    firstNonZeroIndex = t;
+                end
+            end
+        end
+        
+        
+            
+        %Shift examples
+        newExample = zeros(1, size(X, 2));
+        for t = 1:(size(X, 2) / 3)
+            if firstNonZeroIndex > (size(X, 2) / 3)
+                newExample(1,t) = 0;
+                newExample(1,100 + t) = 0;
+                newExample(1,200 + t) = 0;
+                continue;
+            elseif firstNonZeroIndex == -1 
+                firstNonZeroIndex = 0;
+            end
+            newExample(1,t) = X(i,firstNonZeroIndex);
+            newExample(1,100 + t) = X(i,100 + firstNonZeroIndex);
+            newExample(1,200 + t) = X(i,200 + firstNonZeroIndex);
+            firstNonZeroIndex = firstNonZeroIndex + 1;
+        end
+        newX(i, :) = newExample;
+        firstNonZeroIndex
+        newExample
+    end
+
 end
 
 function numCorrect = findNumCorrect(pred, actual)
@@ -65,12 +132,12 @@ function [X_train, X_test, y_train, y_test] = getRandomSplitExamples(X, y, m)
         if any(i==indices)
             X_train(x_train_count, :) = X(i,:);
             y_train(y_train_count, :) = y(i,:);
-            x_train_count = x_train_oount + 1;
+            x_train_count = x_train_count + 1;
             y_train_count = y_train_count + 1;
         else
             X_test(x_test_count, :) = X(i, :);
             y_test(y_test_count, :) = y(i, :);
-            x_test_count = x_test_oount + 1;
+            x_test_count = x_test_count + 1;
             y_test_count = y_test_count + 1;
         end
         
