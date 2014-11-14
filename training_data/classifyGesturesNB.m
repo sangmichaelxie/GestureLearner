@@ -3,9 +3,9 @@ function classifyGesturesNB
     clear all; clear;
     
     %Using the larger test data for training increases performance
-    O = load('O_test.txt');
-    X = load('X_test.txt');
-    Z = load('Z_test.txt');
+    O = load('O.txt');
+    X = load('X.txt');
+    Z = load('Z.txt');
     num_features = size(O ,2);
     %plotGestureData(O, 1);
     %plotGestureData(X, 2);
@@ -18,29 +18,67 @@ function classifyGesturesNB
     training_instance_matrix = smoothts(training_instance_matrix, 'b', 25);
     %plotGestureData(training_instance_matrix(1:size(O, 1),:), 4);
     
-    m = round(size(training_instance_matrix, 1) * 7 / 10);   
+    %m = round(size(training_instance_matrix, 1) * 7 / 10);   	
+	
+	min_endpoint = 6
+	max_endpoint = size(training_instance_matrix, 1) - 1
+	
+	trainAccuracy = zeros(1, max_endpoint - min_endpoint + 1);
+	testAccuracy = zeros(1, max_endpoint - min_endpoint + 1);
     
-    numCorrect = 0;
-    numCorrectTrain = 0;
-    %Resample
-    iterations = 1000;
-    for i = 1:iterations
-        [X_train, X_test, y_train, y_test] = getRandomSplitExamples(training_instance_matrix, training_label_vector, m);
-        %radial basis (gaussian) SVM (set -v 10 for 10-fold cross
-        %validation)
+	for m = min_endpoint:max_endpoint
+		m
+	    numCorrect = 0;
+	    numCorrectTrain = 0;
+	    %Resample
+	    iterations = 1000;
+	    for i = 1:iterations
+			
+			% For Gaussian distribution, each class must have at least two observations. Otherwise, NaiveBayes.fit crashes.
+			
+			% This while loop may be slow for small m
+			while 1
+				[X_train, X_test, y_train, y_test] = getRandomSplitExamples(training_instance_matrix, training_label_vector, m);
+			
+				if (sum(y_train == 0) >= 2) && (sum(y_train == 1) >= 2) && (sum(y_train == 2) >= 2)
+					break
+				end
+			end
+			
+		    %radial basis (gaussian) SVM (set -v 10 for 10-fold cross
+	        %validation)
         
-        model = fitNaiveBayes(X_train, y_train);
-        %model = svmtrain(y_train, X_train, '-s 0 -t 2');
+	        model = fitNaiveBayes(X_train, y_train);
+	        %model = svmtrain(y_train, X_train, '-s 0 -t 2');
         
-        %Training error - it's always 100%
-        train_predictions = model.predict(X_train);
-        numCorrectTrain = numCorrectTrain +  findNumCorrect(train_predictions, y_train);
-        %Testing error
-        test_predictions = model.predict(X_test);
-        numCorrect = numCorrect +  findNumCorrect(test_predictions, y_test);
-    end
-    trainAccuracy = numCorrectTrain / (iterations * m )
-    testAccuracy = numCorrect / (iterations * (size(training_instance_matrix, 1) - m)) 
+	        %Training error - it's always 100%
+	        train_predictions = model.predict(X_train);
+	        numCorrectTrain = numCorrectTrain +  findNumCorrect(train_predictions, y_train);
+	        %Testing error
+	        test_predictions = model.predict(X_test);
+	        numCorrect = numCorrect +  findNumCorrect(test_predictions, y_test);
+	    end
+	    trainAccuracy(1, m - min_endpoint + 1) = numCorrectTrain / (iterations * m)
+	    testAccuracy(1, m - min_endpoint + 1) = numCorrect / (iterations * (size(training_instance_matrix, 1) - m))   
+	end
+	
+	%%% Plot "Bias and Variance" %%%
+	
+	fig = figure;
+	hold on;
+
+	X_data = min_endpoint:max_endpoint;
+	plot(X_data, 1 - trainAccuracy, 'b');
+	plot(X_data, 1 - testAccuracy, 'r');
+
+	title('Naive Bayes Bias and Variance');
+	xlabel('Number of Training Examples');
+	ylabel('Classification Error');
+	legend('Training', 'Test');
+	% for some reason I can't view the plot, so I save it
+	print -dpdf fig; % saved in fig.pdf
+	saveas(fig, 'plot.png')
+	
 end
 
 function [X,Y,Z] = splitData(G)

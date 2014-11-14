@@ -24,8 +24,8 @@ function classifyGestures
     
     %m = round(size(training_instance_matrix, 1) * 7 / 10);
 	
-	min_endpoint = 1;
-	max_endpoint = size(training_instance_matrix, 1) - 1;
+	min_endpoint = 1
+	max_endpoint = size(training_instance_matrix, 1) - 1
 	
 	trainAccuracy = zeros(1, max_endpoint - min_endpoint + 1);
 	testAccuracy = zeros(1, max_endpoint - min_endpoint + 1);
@@ -47,8 +47,8 @@ function classifyGestures
 	        test_predictions = svmpredict(y_test, X_test, model);
 	        numCorrect = numCorrect +  findNumCorrect(test_predictions, y_test);
 	    end
-	    trainAccuracy(1, m - min_endpoint + 1) = numCorrectTrain / (iterations * m)
-	    testAccuracy(1, m - min_endpoint + 1) = numCorrect / (iterations * (size(training_instance_matrix, 1) - m))   
+	    trainAccuracy(1, m) = numCorrectTrain / (iterations * m)
+	    testAccuracy(1, m) = numCorrect / (iterations * (size(training_instance_matrix, 1) - m))   
 	end
 	
 	%%% Plot "Bias and Variance" %%%
