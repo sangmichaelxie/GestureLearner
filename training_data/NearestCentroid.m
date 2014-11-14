@@ -71,12 +71,7 @@ function test_predictions = nearestCentroidClassifier(C, X_test)
 end
 
 function numCorrect = findNumCorrect(pred, actual)
-    numCorrect = 0;
-    for i = 1:size(pred, 1)
-        if pred(i, 1) == actual(i, 1)
-            numCorrect = numCorrect + 1;
-        end
-    end
+    numCorrect = sum(pred == actual);
 end
 
 function [X_train, X_test, y_train, y_test] = getRandomSplitExamples(X, y, m)

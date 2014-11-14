@@ -3,9 +3,9 @@ function NeuralNetwork
     clear all; clear;
     
     %Using the larger test data for training increases performance
-    O = load('O_test.txt');
-    X = load('X_test.txt');
-    Z = load('Z_test.txt');
+    O = load('O.txt');
+    X = load('X.txt');
+    Z = load('Z.txt');
     num_features = size(O ,2);
     %plotGestureData(O, 1);
     %plotGestureData(X, 2);
