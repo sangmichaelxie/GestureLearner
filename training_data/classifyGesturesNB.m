@@ -12,39 +12,35 @@ function classifyGesturesNB
     %plotGestureData(Z, 3);
     
     training_instance_matrix = [O; X; Z;];
-    
-    size(training_instance_matrix)
-    
     training_label_vector = [zeros(size(O, 1), 1); ones(size(X, 1), 1); 2 * ones(size(Z, 1), 1);];
     
-    NBModel = fitNaiveBayes(training_instance_matrix, training_label_vector);
+    %Smoothing with box filter seems to work better than gaussian filter
+    training_instance_matrix = smoothts(training_instance_matrix, 'b', 25);
+    %plotGestureData(training_instance_matrix(1:size(O, 1),:), 4);
     
+    m = round(size(training_instance_matrix, 1) * 7 / 10);   
     
-    
-    %radial basis (gaussian) SVM
-    %model = svmtrain(training_label_vector, training_instance_matrix, '-s 0 -t 2')
-    %train_predictions = svmpredict(training_label_vector, training_instance_matrix, model)
-    %test(model);
-    
-    test(NBModel)
-    
-end
-
-
-function test(model)
-    O_test = load('O.txt');
-    X_test = load('X.txt');
-    Z_test = load('Z.txt');
-    
-    testing_instance_matrix = [O_test; X_test; Z_test;];
-    testing_label_vector = [zeros(size(O_test, 1), 1); ones(size(X_test, 1), 1); 2 * ones(size(Z_test, 1), 1);];
-    
-    model.predict(testing_instance_matrix) - testing_label_vector
-    
-    size(testing_label_vector)
-    
-    %[test_predictions, accuracy, decision_values] = svmpredict(testing_label_vector, testing_instance_matrix, model)
-
+    numCorrect = 0;
+    numCorrectTrain = 0;
+    %Resample
+    iterations = 1000;
+    for i = 1:iterations
+        [X_train, X_test, y_train, y_test] = getRandomSplitExamples(training_instance_matrix, training_label_vector, m);
+        %radial basis (gaussian) SVM (set -v 10 for 10-fold cross
+        %validation)
+        
+        model = fitNaiveBayes(X_train, y_train);
+        %model = svmtrain(y_train, X_train, '-s 0 -t 2');
+        
+        %Training error - it's always 100%
+        train_predictions = model.predict(X_train);
+        numCorrectTrain = numCorrectTrain +  findNumCorrect(train_predictions, y_train);
+        %Testing error
+        test_predictions = model.predict(X_test);
+        numCorrect = numCorrect +  findNumCorrect(test_predictions, y_test);
+    end
+    trainAccuracy = numCorrectTrain / (iterations * m )
+    testAccuracy = numCorrect / (iterations * (size(training_instance_matrix, 1) - m)) 
 end
 
 function [X,Y,Z] = splitData(G)
@@ -68,4 +64,35 @@ function plotGestureData(G, figure_count)
     plot3(X(1,:),Y(1,:),Z(1,:));
     title('One(first) training example');
     
+end
+
+function numCorrect = findNumCorrect(pred, actual)
+    numCorrect = sum(pred == actual);
+end
+
+function [X_train, X_test, y_train, y_test] = getRandomSplitExamples(X, y, m)
+    indices = datasample(1:size(X,1), m, 'Replace',false);
+    X_train = zeros(m, size(X,2));
+    X_test = zeros(size(X,1) - m, size(X,2));
+    y_train = zeros(m, 1);
+    y_test = zeros(size(y ,1) - m, 1);
+    
+    x_train_count = 1;
+    x_test_count = 1;
+    y_train_count = 1;
+    y_test_count = 1;
+    for i = 1:size(X,1)
+        if any(i==indices)
+            X_train(x_train_count, :) = X(i,:);
+            y_train(y_train_count, :) = y(i,:);
+            x_train_count = x_train_count + 1;
+            y_train_count = y_train_count + 1;
+        else
+            X_test(x_test_count, :) = X(i, :);
+            y_test(y_test_count, :) = y(i, :);
+            x_test_count = x_test_count + 1;
+            y_test_count = y_test_count + 1;
+        end
+        
+    end
 end
