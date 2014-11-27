@@ -11,8 +11,15 @@ function classifyGestures
     plotGestureData(O, 1);
     plotGestureData(X, 2);
     plotGestureData(Z, 3);
+	
+	
+	smoothO = smoothGestureData(O);
+	smoothX = smoothGestureData(X);
+	smoothZ = smoothGestureData(Z);
+	
     
-    training_instance_matrix = [O; X; Z;];
+    %training_instance_matrix = [O; X; Z;];
+	training_instance_matrix = [smoothO; smoothX; smoothZ;];
     training_label_vector = [zeros(size(O, 1), 1); ones(size(X, 1), 1); 2 * ones(size(Z, 1), 1);];
     
     %training_instance_matrix = zeroOutAndShift(training_instance_matrix);
@@ -20,12 +27,12 @@ function classifyGestures
     
     %Smoothing with box filter seems to work better than gaussian filter
     training_instance_matrix = smoothts(training_instance_matrix, 'b', 25);
-    plotGestureData(training_instance_matrix(1:size(O, 1),:), 4);
+    %plotGestureData(training_instance_matrix(1:size(O, 1),:), 4);
     
     %m = round(size(training_instance_matrix, 1) * 7 / 10);
 	
-	min_endpoint = 1
-	max_endpoint = size(training_instance_matrix, 1) - 1
+	min_endpoint = round(size(training_instance_matrix, 1) * 7 / 10);
+	max_endpoint = round(size(training_instance_matrix, 1) * 7 / 10);
 	
 	trainAccuracy = zeros(1, max_endpoint - min_endpoint + 1);
 	testAccuracy = zeros(1, max_endpoint - min_endpoint + 1);
@@ -163,6 +170,19 @@ function [X_train, X_test, y_train, y_test] = getRandomSplitExamples(X, y, m)
     end
 end
 
+function GG = smoothGestureData(G)
+	[GX, GY, GZ] = splitData(G);
+	
+	GX = smoothData(GX);
+	GY = smoothData(GY);
+	GZ = smoothData(GZ);
+	
+	GG = [GX GY GZ];
+end
+
+function output = smoothData(input)
+	output = smoothts(input, 'b', 25);
+end
 
 function [X,Y,Z] = splitData(G)
     X = G(:, 1:100);
