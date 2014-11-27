@@ -18,10 +18,12 @@ function classifyGesturesNB
     training_instance_matrix = smoothts(training_instance_matrix, 'b', 25);
     %plotGestureData(training_instance_matrix(1:size(O, 1),:), 4);
     
-    %m = round(size(training_instance_matrix, 1) * 7 / 10);   	
+    %m = round(size(training_instance_matrix, 1) * 7 / 10); 
 	
-	min_endpoint = 6
-	max_endpoint = size(training_instance_matrix, 1) - 1
+	% 25 60  
+		
+	min_endpoint = 60
+	max_endpoint = 60
 	
 	trainAccuracy = zeros(1, max_endpoint - min_endpoint + 1);
 	testAccuracy = zeros(1, max_endpoint - min_endpoint + 1);
@@ -33,7 +35,7 @@ function classifyGesturesNB
 	    %Resample
 	    iterations = 1000;
 	    for i = 1:iterations
-			
+			i
 			% For Gaussian distribution, each class must have at least two observations. Otherwise, NaiveBayes.fit crashes.
 			
 			% This while loop may be slow for small m
@@ -44,9 +46,6 @@ function classifyGesturesNB
 					break
 				end
 			end
-			
-		    %radial basis (gaussian) SVM (set -v 10 for 10-fold cross
-	        %validation)
         
 	        model = fitNaiveBayes(X_train, y_train);
 	        %model = svmtrain(y_train, X_train, '-s 0 -t 2');
