@@ -39,13 +39,14 @@ function classifyGestures
 	    numCorrect = 0;
 	    numCorrectTrain = 0;
 	    %Resample
-	    iterations = 1000;
+	    iterations = 1;
+        m = 5;
 	    for i = 1:iterations
             
 	        [X_train, X_test, y_train, y_test] = getRandomSplitExamples(training_instance_matrix, training_label_vector, m, numClasses);
 	        %radial basis (gaussian) SVM (set -v 10 for 10-fold cross
 	        %validation)
-	        model = svmtrain(y_train, X_train, '-s 0 -t 1'); %try linear kernel -t 0 or gaussian -t 2
+	        model = svmtrain(y_train, X_train, '-s 0 -t 0'); %try linear kernel -t 0 or gaussian -t 2
 	        %Training error - it's always 100%
 	        train_predictions = svmpredict(y_train, X_train, model);
 	        numCorrectTrain = numCorrectTrain +  findNumCorrect(train_predictions, y_train);
@@ -57,8 +58,7 @@ function classifyGestures
 	    testAccuracy(1, m - min_endpoint + 1) = numCorrect / (iterations * (size(training_instance_matrix, 1) - numClasses * m));  
         
     end
-
-    testAccuracy
+return;
 	%%% Plot "Bias and Variance" %%%
 	
 	fig = figure;
@@ -69,7 +69,7 @@ function classifyGestures
 	plot(X_data, 1 - testAccuracy, 'r');
 
 	title('SVM Bias and Variance');
-	xlabel('Number of Training Examples per Class');
+	xlabel('Number of Training Examples');
 	ylabel('Classification Error');
 	legend('Training', 'Test');
 	% for some reason I can't view the plot, so I save it
@@ -201,7 +201,7 @@ function [X_train, X_test, y_train, y_test] = getRandomSplitExamples(X, y, m, nu
     shufflerMatrix = shufflerMatrix(randperm(size(shufflerMatrix,1)),:);
     
     X_test = shufflerMatrix(:,1:end-1);
-    y_test = shufflerMatrix(:,end);
+    y_test = shufflerMatrix(
 end
 
 function GG = smoothGestureData(G)
