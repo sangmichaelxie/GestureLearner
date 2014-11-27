@@ -6,43 +6,76 @@ function classifyGestures
     O = load('O.txt');
     X = load('X.txt');
     Z = load('Z.txt');
+	V = load('V.txt');
       
     num_features = size(O ,2);
     plotGestureData(O, 1);
     plotGestureData(X, 2);
     plotGestureData(Z, 3);
+	plotGestureData(V, 3);
+	
+	smoothO = smoothGestureData(O);
+	smoothX = smoothGestureData(X);
+	smoothZ = smoothGestureData(Z);
+	smoothV = smoothGestureData(V);
     
-    training_instance_matrix = [O; X; Z;];
-    training_label_vector = [zeros(size(O, 1), 1); ones(size(X, 1), 1); 2 * ones(size(Z, 1), 1);];
+    %training_instance_matrix = [O; X; Z;];
+	training_instance_matrix = [smoothO; smoothX; smoothZ; smoothV;];
+    training_label_vector = [zeros(size(O, 1), 1); ones(size(X, 1), 1); 2 * ones(size(Z, 1), 1); 3 * ones(size(Z, 1), 1);];
     
     %training_instance_matrix = zeroOutAndShift(training_instance_matrix);
     %zeroing out doesn't work
     
     %Smoothing with box filter seems to work better than gaussian filter
     training_instance_matrix = smoothts(training_instance_matrix, 'b', 25);
-    plotGestureData(training_instance_matrix(1:size(O, 1),:), 4);
+    %plotGestureData(training_instance_matrix(1:size(O, 1),:), 4);
     
-    m = round(size(training_instance_matrix, 1) * 7 / 10);    
+    %m = round(size(training_instance_matrix, 1) * 7 / 10);
+	
+	min_endpoint = round(size(training_instance_matrix, 1) * 7 / 10);
+	max_endpoint = round(size(training_instance_matrix, 1) * 7 / 10);
+	
+	trainAccuracy = zeros(1, max_endpoint - min_endpoint + 1);
+	testAccuracy = zeros(1, max_endpoint - min_endpoint + 1);
     
-    numCorrect = 0;
-    numCorrectTrain = 0;
-    %Resample
-    iterations = 1000;
-    for i = 1:iterations
-        [X_train, X_test, y_train, y_test] = getRandomSplitExamples(training_instance_matrix, training_label_vector, m);
-        %radial basis (gaussian) SVM (set -v 10 for 10-fold cross
-        %validation)
-        model = svmtrain(y_train, X_train, '-s 0 -t 2');
-        %Training error - it's always 100%
-        train_predictions = svmpredict(y_train, X_train, model);
-        numCorrectTrain = numCorrectTrain +  findNumCorrect(train_predictions, y_train);
-        %Testing error
-        test_predictions = svmpredict(y_test, X_test, model);
-        numCorrect = numCorrect +  findNumCorrect(test_predictions, y_test);
-    end
-    trainAccuracy = numCorrectTrain / (iterations * m )
-    testAccuracy = numCorrect / (iterations * (size(training_instance_matrix, 1) - m))    
-    
+	for m = min_endpoint:max_endpoint
+	    numCorrect = 0;
+	    numCorrectTrain = 0;
+	    %Resample
+	    iterations = 1000;
+	    for i = 1:iterations
+	        [X_train, X_test, y_train, y_test] = getRandomSplitExamples(training_instance_matrix, training_label_vector, m);
+	        %radial basis (gaussian) SVM (set -v 10 for 10-fold cross
+	        %validation)
+	        model = svmtrain(y_train, X_train, '-s 0 -t 2');
+	        %Training error - it's always 100%
+	        train_predictions = svmpredict(y_train, X_train, model);
+	        numCorrectTrain = numCorrectTrain +  findNumCorrect(train_predictions, y_train);
+	        %Testing error
+	        test_predictions = svmpredict(y_test, X_test, model);
+	        numCorrect = numCorrect +  findNumCorrect(test_predictions, y_test);
+	    end
+	    trainAccuracy(1, m - min_endpoint + 1) = numCorrectTrain / (iterations * m)
+	    testAccuracy(1, m - min_endpoint + 1) = numCorrect / (iterations * (size(training_instance_matrix, 1) - m))   
+	end
+	
+	%%% Plot "Bias and Variance" %%%
+	
+	fig = figure;
+	hold on;
+
+	X_data = min_endpoint:max_endpoint;
+	plot(X_data, 1 - trainAccuracy, 'b');
+	plot(X_data, 1 - testAccuracy, 'r');
+
+	title('SVM Bias and Variance');
+	xlabel('Number of Training Examples');
+	ylabel('Classification Error');
+	legend('Training', 'Test');
+	% for some reason I can't view the plot, so I save it
+	print -dpdf fig; % saved in fig.pdf
+	saveas(fig, 'plot.png')
+	
 end
 
 function newX = zeroOutAndShift(X)
@@ -108,12 +141,7 @@ function newX = zeroOutAndShift(X)
 end
 
 function numCorrect = findNumCorrect(pred, actual)
-    numCorrect = 0;
-    for i = 1:size(pred, 1)
-        if pred(i, 1) == actual(i, 1)
-            numCorrect = numCorrect + 1;
-        end
-    end
+    numCorrect = sum(pred == actual);
 end
 
 function [X_train, X_test, y_train, y_test] = getRandomSplitExamples(X, y, m)
@@ -143,6 +171,19 @@ function [X_train, X_test, y_train, y_test] = getRandomSplitExamples(X, y, m)
     end
 end
 
+function GG = smoothGestureData(G)
+	[GX, GY, GZ] = splitData(G);
+	
+	GX = smoothData(GX);
+	GY = smoothData(GY);
+	GZ = smoothData(GZ);
+	
+	GG = [GX GY GZ];
+end
+
+function output = smoothData(input)
+	output = smoothts(input, 'b', 25);
+end
 
 function [X,Y,Z] = splitData(G)
     X = G(:, 1:100);
