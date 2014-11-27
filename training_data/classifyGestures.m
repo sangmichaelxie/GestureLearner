@@ -7,6 +7,7 @@ function classifyGestures
     X = load('X.txt');
     Z = load('Z.txt');
 	V = load('V.txt');
+    W = load('W.txt');
       
     num_features = size(O ,2);
     %plotGestureData(O, 1);
@@ -18,10 +19,11 @@ function classifyGestures
 	smoothX = smoothGestureData(X);
 	smoothZ = smoothGestureData(Z);
 	smoothV = smoothGestureData(V);
+    smoothW = smoothGestureData(W);
     
-	training_instance_matrix = [smoothO; smoothX; smoothZ; smoothV;];
-    training_label_vector = [zeros(size(O, 1), 1); ones(size(X, 1), 1); 2 * ones(size(Z, 1), 1); 3 * ones(size(V, 1), 1);];
-    numClasses = 4;
+	training_instance_matrix = [smoothO; smoothX; smoothZ; smoothV;smoothW;];
+    training_label_vector = [zeros(size(O, 1), 1); ones(size(X, 1), 1); 2 * ones(size(Z, 1), 1); 3 * ones(size(V, 1), 1); 4 * ones(size(W,1),1)];
+    numClasses = 5;
     
     %training_instance_matrix = zeroOutAndShift(training_instance_matrix);
     %zeroing out doesn't work
