@@ -9,9 +9,9 @@ function NearestCentroid()
     
     training_instance_matrix = [O; X; Z;];
     training_label_vector = [zeros(size(O, 1), 1) + 1; 2 * ones(size(X, 1), 1); 3 * ones(size(Z, 1), 1);];
-    training_instance_matrix = smoothts(training_instance_matrix, 'b', 25);
+    %training_instance_matrix = smoothts(training_instance_matrix, 'b', 25);
     
-    m = round(size(training_instance_matrix, 1) * 7 / 10);    
+    m = 25%round(size(training_instance_matrix, 1) * 7 / 10);    
     
     numCorrect = 0;
     numCorrectTrain = 0;

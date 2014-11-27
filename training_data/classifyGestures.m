@@ -30,7 +30,7 @@ function classifyGestures
     training_instance_matrix = smoothts(training_instance_matrix, 'b', 25);
     %plotGestureData(training_instance_matrix(1:size(O, 1),:), 4);
     
-    %m = round(size(training_instance_matrix, 1) * 7 / 10);
+    m = 60%round(size(training_instance_matrix, 1) * 7 / 10);
 	
 	min_endpoint = round(size(training_instance_matrix, 1) * 7 / 10);
 	max_endpoint = round(size(training_instance_matrix, 1) * 7 / 10);
@@ -38,7 +38,7 @@ function classifyGestures
 	trainAccuracy = zeros(1, max_endpoint - min_endpoint + 1);
 	testAccuracy = zeros(1, max_endpoint - min_endpoint + 1);
     
-	for m = min_endpoint:max_endpoint
+	%for m = min_endpoint:max_endpoint
 	    numCorrect = 0;
 	    numCorrectTrain = 0;
 	    %Resample
@@ -57,8 +57,8 @@ function classifyGestures
 	    end
 	    trainAccuracy(1, m - min_endpoint + 1) = numCorrectTrain / (iterations * m)
 	    testAccuracy(1, m - min_endpoint + 1) = numCorrect / (iterations * (size(training_instance_matrix, 1) - m))   
-	end
-	
+	%end
+	return;
 	%%% Plot "Bias and Variance" %%%
 	
 	fig = figure;
@@ -73,8 +73,8 @@ function classifyGestures
 	ylabel('Classification Error');
 	legend('Training', 'Test');
 	% for some reason I can't view the plot, so I save it
-	print -dpdf fig; % saved in fig.pdf
-	saveas(fig, 'plot.png')
+	print -dpdf fig-no-smoothing; % saved in fig.pdf
+	saveas(fig, 'plot-no-smoothing.png')
 	
 end
 

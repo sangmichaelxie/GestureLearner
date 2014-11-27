@@ -36,9 +36,9 @@ function NeuralNetwork
 
 
     % Set up Division of Data for Training, Validation, Testing
-    net.divideParam.trainRatio = 70/100;
-    net.divideParam.valRatio = 15/100;
-    net.divideParam.testRatio = 15/100;
+    net.divideParam.trainRatio = 25 / 93;
+    net.divideParam.valRatio = 0 / 93;
+    net.divideParam.testRatio = 68 / 93;
 
 
     % Train the Network
