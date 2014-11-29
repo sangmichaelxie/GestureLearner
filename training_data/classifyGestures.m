@@ -9,19 +9,58 @@ function classifyGestures
 	V = load('V.txt');
     W = load('W.txt');
       
-    num_features = size(O ,2);
+    %num_features = size(O ,2);
     %plotGestureData(O, 1);
     %plotGestureData(X, 2);
     %plotGestureData(Z, 3);
 	%plotGestureData(V, 3);
+	
+	
+	
+	
+	
+	%O = truncateGestureData(O);
+	%X = truncateGestureData(X);
+	%Z = truncateGestureData(Z);
+	%V = truncateGestureData(V);
+	%W = truncateGestureData(W);
+	
+	
 	
 	smoothO = smoothGestureData(O);
 	smoothX = smoothGestureData(X);
 	smoothZ = smoothGestureData(Z);
 	smoothV = smoothGestureData(V);
     smoothW = smoothGestureData(W);
+	
+	
+	%smoothO = O;
+	%smoothX = X;
+	%smoothZ = Z;
+	%smoothV = V;
+	%smoothW = W;
+	
+	
+	
+	%smoothO = truncateGestureData(smoothO);
+	%smoothX = truncateGestureData(smoothX);
+	%smoothZ = truncateGestureData(smoothZ);
+	%smoothV = truncateGestureData(smoothV);
+	%smoothW = truncateGestureData(smoothW);
+
+	%poll = 1;
+	%smoothO = smoothO(:, 1:poll:300);
+	%smoothX = smoothX(:, 1:poll:300);
+	%smoothZ = smoothZ(:, 1:poll:300);
+	%smoothV = smoothV(:, 1:poll:300);
+	%smoothW = smoothW(:, 1:poll:300);
+	
+
+	size(O)
+	size(smoothO)
     
 	training_instance_matrix = [smoothO; smoothX; smoothZ; smoothV;smoothW;];
+	
     training_label_vector = [zeros(size(O, 1), 1); ones(size(X, 1), 1); 2 * ones(size(Z, 1), 1); 3 * ones(size(V, 1), 1); 4 * ones(size(W,1),1)];
     numClasses = 5;
     
@@ -31,7 +70,7 @@ function classifyGestures
     %plotGestureData(training_instance_matrix(1:size(O, 1),:), 4);
     	
 	min_endpoint = 1;
-	max_endpoint = 10;
+	max_endpoint = 30;
 	
 	trainAccuracy = zeros(1, max_endpoint - min_endpoint + 1);
 	testAccuracy = zeros(1, max_endpoint - min_endpoint + 1);
@@ -45,9 +84,18 @@ function classifyGestures
 	    for i = 1:iterations
             
 	        [X_train, X_test, y_train, y_test] = getRandomSplitExamples(training_instance_matrix, training_label_vector, m, numClasses);
-	        %radial basis (gaussian) SVM (set -v 10 for 10-fold cross
+	        
+			%Normalize
+			%X_train = X_train - mean(X_train(:));
+			%X_test = X_test - mean(X_test(:));
+			
+			%X_train = X_train / std(X_train(:));
+			%X_test = X_test / std(X_test(:));
+			
+			
+			%radial basis (gaussian) SVM (set -v 10 for 10-fold cross
 	        %validation)
-	        model = svmtrain(y_train, X_train, '-s 0 -t 1'); %try linear kernel -t 0 or gaussian -t 2
+	        model = svmtrain(y_train, X_train, '-s 0 -t 0'); %try linear kernel -t 0 or gaussian -t 2
 	        %Training error - it's always 100%
 	        train_predictions = svmpredict(y_train, X_train, model);
 	        numCorrectTrain = numCorrectTrain +  findNumCorrect(train_predictions, y_train);
@@ -60,6 +108,7 @@ function classifyGestures
         
     end
 
+	trainAccuracy
     testAccuracy
 	%%% Plot "Bias and Variance" %%%
 	
@@ -75,71 +124,9 @@ function classifyGestures
 	ylabel('Classification Error');
 	legend('Training', 'Test');
 	% for some reason I can't view the plot, so I save it
-	%print -dpdf fig-no-smoothing; % saved in fig.pdf
-	%saveas(fig, 'plot-no-smoothing.png')
+	print -dpdf fig; % saved in fig.pdf
+	saveas(fig, 'plot-box-filter.png')
 	
-end
-
-function newX = zeroOutAndShift(X)
-    newX = zeros(size(X, 1), size(X, 2));
-    for i = 1:size(X,1)
-        for t = 2:(size(X, 2) / 3)
-            
-            accelVec = [X(i, t); X(i, 100 + t); X(i, 200 + t);];
-            accelVecPrev = [X(i, t - 1); X(i, 100 + t - 1); X(i, 200 + t - 1);];
-            if norm(accelVec - accelVecPrev) < 0.5
-                X(i, t) = 0; 
-                X(i, t + 100) = 0; 
-                X(i, t + 200) = 0;
-            end
-        end
-        
-        firstNonZeroIndex  = -1;
-        X(i, 1) = 0;
-        X(i, 101) = 0;
-        X(i, 201) = 0;
-        X(i, 100) = 0;
-        X(i, 200) = 0;
-        X(i, 300) = 0;
-        for t = 2:(size(X, 2) / 3 - 1)
-            accelVecForward = [X(i, t + 1); X(i, 100 + t + 1); X(i, 200 + t + 1);];
-            accelVec = [X(i, t); X(i, 100 + t); X(i, 200 + t);];
-            accelVecPrev = [X(i, t - 1); X(i, 100 + t - 1); X(i, 200 + t - 1);];
-            diff = accelVecForward - accelVecPrev;
-            if diff(1) == 0 || diff(2) == 0 || diff(3) == 0
-                X(i, t) = 0; 
-                X(i, t + 100) = 0; 
-                X(i, t + 200) = 0;
-            else 
-                if firstNonZeroIndex == -1
-                    firstNonZeroIndex = t;
-                end
-            end
-        end
-        
-        
-            
-        %Shift examples
-        newExample = zeros(1, size(X, 2));
-        for t = 1:(size(X, 2) / 3)
-            if firstNonZeroIndex > (size(X, 2) / 3)
-                newExample(1,t) = 0;
-                newExample(1,100 + t) = 0;
-                newExample(1,200 + t) = 0;
-                continue;
-            elseif firstNonZeroIndex == -1 
-                firstNonZeroIndex = 0;
-            end
-            newExample(1,t) = X(i,firstNonZeroIndex);
-            newExample(1,100 + t) = X(i,100 + firstNonZeroIndex);
-            newExample(1,200 + t) = X(i,200 + firstNonZeroIndex);
-            firstNonZeroIndex = firstNonZeroIndex + 1;
-        end
-        newX(i, :) = newExample;
-        firstNonZeroIndex
-        newExample
-    end
-
 end
 
 function numCorrect = findNumCorrect(pred, actual)
@@ -206,6 +193,136 @@ function [X_train, X_test, y_train, y_test] = getRandomSplitExamples(X, y, m, nu
     y_test = shufflerMatrix(:,end);
 end
 
+function GG = truncateGestureData(G)
+	
+	GG = G;
+	
+	
+	for k = 1:size(GG, 1)
+		
+		GG(k, :) = truncateGestureExample(GG(k, :));
+		
+	end
+	
+	%GG(1, :)
+	
+	%pause(10000000);
+	
+end
+
+function GG = truncateGestureExample(G)
+	
+	[X, Y, Z] = splitData(G);
+	
+	% Truncate a fixed amount from both ends to remove noise.
+	% If this is not done, then truncating a variable amount will not work 
+	% effectively because for many training examples there is a sharp incline
+	% between times 1 and 5; this incline appears to be noise.
+	%
+	% Truncating a fixed small amount doesn't appear to have any effect on
+	% accuracy.
+	
+	noiseDelta = 5;
+	
+	X = X(1, (noiseDelta + 1):100);
+	%GX(:, (100 - noiseDelta):100) = 0;
+	
+	Y = Y(1, (noiseDelta + 1):100);
+	%GY(:, (100 - noiseDelta):100) = 0;
+	
+	Z = Z(1, (noiseDelta + 1):100);
+	%GZ(:, (100 - noiseDelta):100) = 0;
+	
+	
+	
+	GX = X;
+	GY = Y;
+	GZ = Z;
+	
+	
+	% Now time to truncate variable amount from both ends.
+	%
+	% Truncating variable amount won't be effective on gestures with change in
+	% acceleration because the whole thing will be truncated! We will add some 
+	% threshold on how much you can truncate.
+		
+	noiseNormThreshold = 1;
+	
+	
+	% Truncate from left side
+	
+	bound = size(X, 2);
+	
+	
+	
+	
+	for k = 1:bound
+		
+		diffNorm = sqrt((X(k) - X(1))^2 + (Y(k) - Y(1))^2 + (Z(k) - Z(1))^2);
+		
+		if (diffNorm < noiseNormThreshold)
+			GX(1) = [];
+			GY(1) = [];
+			GZ(1) = [];
+		else
+			break;
+		end
+		
+	end
+	
+	
+	% Truncate from right side
+	
+	for k = bound:-1:1
+		
+		diffNorm = sqrt((X(k) - X(bound))^2 + (Y(k) - Y(bound))^2 + (Z(k) - Z(bound))^2);
+		
+		if (diffNorm < noiseNormThreshold)
+			rightist = size(GX, 2);
+			GX(rightist) = [];
+			GY(rightist) = [];
+			GZ(rightist) = [];
+		else
+			break;
+		end
+		
+	end
+	
+	
+	% Linear interpolation to grow back to size 300!
+	
+	%
+	% Try different interpolations!
+	%
+	
+	domain = 1:100;
+	
+	domain = (domain - 1) .* ((size(GX, 2) - 1) / (length(domain) - 1)) + 1;
+	
+	
+	
+	NGX = interp1(1:size(GX, 2), GX, domain);
+	NGY = interp1(1:size(GY, 2), GY, domain);
+	NGZ = interp1(1:size(GZ, 2), GZ, domain);
+	
+	
+
+	%NGX
+	
+	%pause(10000000);
+
+	
+	
+	%x = 100:-1:1
+	
+	%size(GX)
+	
+	%pause(100000000);
+	
+	
+	GG = [NGX NGY NGZ];
+end
+
 function GG = smoothGestureData(G)
 	[GX, GY, GZ] = splitData(G);
 	
@@ -217,7 +334,20 @@ function GG = smoothGestureData(G)
 end
 
 function output = smoothData(input)
-	output = smoothts(input, 'b', 25);
+	%output = smoothts(input, 'b', 25);
+	
+	
+	
+	%Moving average filter
+	%windowSize = 5;
+
+	%b = (1/windowSize)*ones(1,windowSize)
+	%a = 1;
+	%output = filter(b,a,input);
+	
+	%Low pass filter
+	a = 0.3;
+	output = filter(a, [1 a-1], input)
 end
 
 function [X,Y,Z] = splitData(G)
