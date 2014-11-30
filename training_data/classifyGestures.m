@@ -15,101 +15,82 @@ function classifyGestures
     %plotGestureData(Z, 3);
 	%plotGestureData(V, 3);
 	
-	
-	
-	
-	
-	%O = truncateGestureData(O);
-	%X = truncateGestureData(X);
-	%Z = truncateGestureData(Z);
-	%V = truncateGestureData(V);
-	%W = truncateGestureData(W);
-	
-	
-	
-	smoothO = smoothGestureData(O);
-	smoothX = smoothGestureData(X);
-	smoothZ = smoothGestureData(Z);
-	smoothV = smoothGestureData(V);
-    smoothW = smoothGestureData(W);
-	
-	
-	%smoothO = O;
-	%smoothX = X;
-	%smoothZ = Z;
-	%smoothV = V;
-	%smoothW = W;
-	
-	
-	
-	%smoothO = truncateGestureData(smoothO);
-	%smoothX = truncateGestureData(smoothX);
-	%smoothZ = truncateGestureData(smoothZ);
-	%smoothV = truncateGestureData(smoothV);
-	%smoothW = truncateGestureData(smoothW);
-
-	%poll = 1;
-	%smoothO = smoothO(:, 1:poll:300);
-	%smoothX = smoothX(:, 1:poll:300);
-	%smoothZ = smoothZ(:, 1:poll:300);
-	%smoothV = smoothV(:, 1:poll:300);
-	%smoothW = smoothW(:, 1:poll:300);
-	
-
-	size(O)
-	size(smoothO)
     
-	training_instance_matrix = [smoothO; smoothX; smoothZ; smoothV;smoothW;];
+	%plotThresholds(O, X,Z,V,W, 4.6);
+    
+    
+    O = truncateGestureData(O);
+	X = truncateGestureData(X);
+	Z = truncateGestureData(Z);
+	V = truncateGestureData(V);
+	W = truncateGestureData(W); 
+    
+    %O = normalizeData(O);
+    %X = normalizeData(X);
+	%Z = normalizeData(Z);
+	%V = normalizeData(V);
+	%W = normalizeData(W);
+    
+    
+    O = smoothGestureData(O);
+	X = smoothGestureData(X);
+	Z = smoothGestureData(Z);
+	V = smoothGestureData(V);
+    W = smoothGestureData(W);
+	
+    O = addMeanVariance(O);
+    X = addMeanVariance(X);
+    Z = addMeanVariance(Z);
+    V = addMeanVariance(V);
+    W = addMeanVariance(W);
+    
+	
+	training_instance_matrix = [O; X; Z; V; W;];
 	
     training_label_vector = [zeros(size(O, 1), 1); ones(size(X, 1), 1); 2 * ones(size(Z, 1), 1); 3 * ones(size(V, 1), 1); 4 * ones(size(W,1),1)];
     numClasses = 5;
     
-    %training_instance_matrix = zeroOutAndShift(training_instance_matrix);
-    %zeroing out doesn't work
-    
     %plotGestureData(training_instance_matrix(1:size(O, 1),:), 4);
     	
 	min_endpoint = 1;
-	max_endpoint = 30;
+	max_endpoint = 10;
 	
 	trainAccuracy = zeros(1, max_endpoint - min_endpoint + 1);
-	testAccuracy = zeros(1, max_endpoint - min_endpoint + 1);
+	testAccuracy = zeros(numClasses + 1, max_endpoint - min_endpoint + 1);
     
     %m is examples from each class
 	for m = min_endpoint:max_endpoint
-	    numCorrect = 0;
-	    numCorrectTrain = 0;
+	    numCorrectTest = zeros(numClasses, 1);
+	    numCorrectTrain = zeros(numClasses, 1);
+        totalTest = zeros(numClasses, 1);
 	    %Resample
 	    iterations = 1000;
-	    for i = 1:iterations
-            
+	    for i = 1:iterations    
 	        [X_train, X_test, y_train, y_test] = getRandomSplitExamples(training_instance_matrix, training_label_vector, m, numClasses);
 	        
-			%Normalize
-			%X_train = X_train - mean(X_train(:));
-			%X_test = X_test - mean(X_test(:));
-			
-			%X_train = X_train / std(X_train(:));
-			%X_test = X_test / std(X_test(:));
-			
 			
 			%radial basis (gaussian) SVM (set -v 10 for 10-fold cross
 	        %validation)
 	        model = svmtrain(y_train, X_train, '-s 0 -t 0'); %try linear kernel -t 0 or gaussian -t 2
 	        %Training error - it's always 100%
 	        train_predictions = svmpredict(y_train, X_train, model);
-	        numCorrectTrain = numCorrectTrain +  findNumCorrect(train_predictions, y_train);
+            [currCorrectTrain, totalTested] = findNumCorrect(train_predictions, y_train, numClasses);
+	        numCorrectTrain = numCorrectTrain +  currCorrectTrain;
 	        %Testing error
 	        test_predictions = svmpredict(y_test, X_test, model);
-	        numCorrect = numCorrect +  findNumCorrect(test_predictions, y_test);
+            [currCorrectTest, totalTested] = findNumCorrect(test_predictions, y_test, numClasses);
+            
+	        numCorrectTest = numCorrectTest +  currCorrectTest;
+            totalTest = totalTest + totalTested;
 	    end
-	    trainAccuracy(1, m - min_endpoint + 1) = numCorrectTrain / (iterations * numClasses * m);
-	    testAccuracy(1, m - min_endpoint + 1) = numCorrect / (iterations * (size(training_instance_matrix, 1) - numClasses * m));  
-        
+	    trainAccuracy(1, m - min_endpoint + 1) = sum(numCorrectTrain) / (iterations * numClasses * m);
+        testAccuracy(1:numClasses, m - min_endpoint + 1) = numCorrectTest ./ totalTest;
+	    testAccuracy(numClasses + 1, m - min_endpoint + 1) = sum(numCorrectTest) / (iterations * (size(training_instance_matrix, 1) - numClasses * m));  
     end
 
 	trainAccuracy
     testAccuracy
+    
 	%%% Plot "Bias and Variance" %%%
 	
 	fig = figure;
@@ -124,18 +105,64 @@ function classifyGestures
 	ylabel('Classification Error');
 	legend('Training', 'Test');
 	% for some reason I can't view the plot, so I save it
-	print -dpdf fig; % saved in fig.pdf
-	saveas(fig, 'plot-box-filter.png')
+	%print -dpdf fig; % saved in fig.pdf
+	%saveas(fig, 'plot-box-filter.png')
 	
 end
 
-function numCorrect = findNumCorrect(pred, actual)
-    %numCorrect = sum(pred == actual);
-    numCorrect = 0 ;
+function GG = addMeanVariance(G)
+    [GX, GY, GZ] = splitData(G);
+
+	
+	uX = mean(GX, 2);
+	uY = mean(GY, 2);
+	uZ = mean(GZ, 2);
+	
+	sX = std(GX, 0, 2);
+	sY = std(GY, 0, 2);
+	sZ = std(GZ, 0, 2);
+    
+    %16 point FFT
+    fftX = real(fft(GX, 21, 2));
+    fftY = real(fft(GY, 21, 2));
+    fftZ = real(fft(GZ, 21, 2));
+    
+    GG = [G uX uY uZ sX sY sZ fftX fftY fftZ];
+
+end
+
+function plotThresholds(O,X,Z,V,W,factor)
+       
+    thresholds = zeros(5, size(O,1));
+    count = 1;
+    for k = 1:size(O, 1)
+        thresholds(:, k) = [noiseNormThresholdFn(O(k, :), factor); 
+                        noiseNormThresholdFn(X(k, :), factor); 
+                        noiseNormThresholdFn(Z(k, :), factor); 
+                        noiseNormThresholdFn(V(k, :), factor); 
+                        noiseNormThresholdFn(W(k, :), factor);];
+    end
+    
+    figure;
+    for i = 1:5
+        plot(thresholds(i,:))
+        hold on;
+    end
+    legend('O', 'X', 'Z', 'V', 'W');
+    title('Truncation Thresholds');
+    hold off;
+
+
+
+end
+function [numCorrect, totalTested] = findNumCorrect(pred, actual, numClasses)
+    numCorrect = zeros(numClasses, 1);
+    totalTested = zeros(numClasses, 1);
     for i = 1:size(pred,1)
        if pred(i) == actual(i)
-           numCorrect = numCorrect + 1;
+           numCorrect(actual(i) + 1, 1) = numCorrect(actual(i) + 1, 1) + 1;
        end
+       totalTested(actual(i) + 1, 1) = totalTested(actual(i) + 1, 1) + 1;
     end
 end
 
@@ -202,12 +229,12 @@ function GG = truncateGestureData(G)
 		
 		GG(k, :) = truncateGestureExample(GG(k, :));
 		
-	end
+    end
 	
-	%GG(1, :)
-	
-	%pause(10000000);
-	
+end
+
+function threshold = noiseNormThresholdFn(G, factor)
+    threshold = std(G)^0.5 / factor; %4.3 was good
 end
 
 function GG = truncateGestureExample(G)
@@ -245,8 +272,13 @@ function GG = truncateGestureExample(G)
 	% Truncating variable amount won't be effective on gestures with change in
 	% acceleration because the whole thing will be truncated! We will add some 
 	% threshold on how much you can truncate.
-		
-	noiseNormThreshold = 1;
+	
+    %noiseNormThreshold = noiseNormThresholdFn(G, 4.57);
+	
+    %noiseNormThreshold = 0.18395; %for normalize then truncate
+	
+    %noiseNormThreshold = std(G)^0.5 / 4.6; %4.3 was good
+	noiseNormThreshold = std(G)^0.5 / 4.57;
 	
 	
 	% Truncate from left side
@@ -306,31 +338,48 @@ function GG = truncateGestureExample(G)
 	NGZ = interp1(1:size(GZ, 2), GZ, domain);
 	
 	
-
-	%NGX
-	
-	%pause(10000000);
-
-	
-	
-	%x = 100:-1:1
-	
-	%size(GX)
-	
-	%pause(100000000);
-	
-	
 	GG = [NGX NGY NGZ];
 end
 
+function GG = normalizeData(G)
+    [GX, GY, GZ] = splitData(G);
+
+	
+	uX = mean(GX, 2);
+	uY = mean(GY, 2);
+	uZ = mean(GZ, 2);
+	
+	sX = std(GX, 0, 2);
+	sY = std(GY, 0, 2);
+	sZ = std(GZ, 0, 2);
+	
+	uX = repmat(uX, 1, size(GX, 2));
+	uY = repmat(uY, 1, size(GY, 2));
+	uZ = repmat(uZ, 1, size(GZ, 2));
+	
+	sX = repmat(sX, 1, size(GX, 2));
+	sY = repmat(sY, 1, size(GY, 2));
+	sZ = repmat(sZ, 1, size(GZ, 2));
+	
+	GX = (GX - uX) ./ sX;
+	GY = (GY - uY) ./ sY;
+	GZ = (GZ - uZ) ./ sZ;
+	
+	GG = [GX GY GZ];
+
+end
 function GG = smoothGestureData(G)
 	[GX, GY, GZ] = splitData(G);
+
 	
 	GX = smoothData(GX);
 	GY = smoothData(GY);
 	GZ = smoothData(GZ);
+
 	
 	GG = [GX GY GZ];
+	
+	
 end
 
 function output = smoothData(input)
@@ -345,15 +394,18 @@ function output = smoothData(input)
 	%a = 1;
 	%output = filter(b,a,input);
 	
+	
+	
 	%Low pass filter
 	a = 0.3;
-	output = filter(a, [1 a-1], input)
+	output = filter(a, [1 a-1], input, [] , 2);
 end
 
 function [X,Y,Z] = splitData(G)
-    X = G(:, 1:100);
-    Y = G(:, 101:200);
-    Z = G(:, 201:300); 
+	d = floor(size(G, 2) / 3)
+    X = G(:, 1:d);
+    Y = G(:, (d + 1):(2 * d));
+    Z = G(:, (2 * d + 1):(3 * d)); 
 end
 
 function plotGestureData(G, figure_count)
