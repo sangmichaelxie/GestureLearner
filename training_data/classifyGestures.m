@@ -98,7 +98,7 @@ function classifyGestures
 
 	X_data = min_endpoint:max_endpoint;
 	plot(X_data, 1 - trainAccuracy, 'b');
-	plot(X_data, 1 - testAccuracy, 'r');
+	plot(X_data, 1 - testAccuracy(6, :), 'r');
 
 	title('SVM Bias and Variance');
 	xlabel('Number of Training Examples per Class');
@@ -402,7 +402,7 @@ function output = smoothData(input)
 end
 
 function [X,Y,Z] = splitData(G)
-	d = floor(size(G, 2) / 3)
+	d = floor(size(G, 2) / 3);
     X = G(:, 1:d);
     Y = G(:, (d + 1):(2 * d));
     Z = G(:, (2 * d + 1):(3 * d)); 

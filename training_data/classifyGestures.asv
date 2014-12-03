@@ -1,14 +1,25 @@
-function KNearestNeighbors  
-     clear all; clear;
+
+function classifyGestures  
+    clear all; clear;
     
     %Using the larger test data for training increases performance
     O = load('O.txt');
     X = load('X.txt');
     Z = load('Z.txt');
 	V = load('V.txt');
-	W = load('W.txt');
+    W = load('W.txt');
+      
+    %num_features = size(O ,2);
+    %plotGestureData(O, 1);
+    %plotGestureData(X, 2);
+    %plotGestureData(Z, 3);
+	%plotGestureData(V, 3);
 	
-	O = truncateGestureData(O);
+    
+	%plotThresholds(O, X,Z,V,W, 4.6);
+    
+    
+    O = truncateGestureData(O);
 	X = truncateGestureData(X);
 	Z = truncateGestureData(Z);
 	V = truncateGestureData(V);
@@ -56,16 +67,17 @@ function KNearestNeighbors
 	    iterations = 1000;
 	    for i = 1:iterations    
 	        [X_train, X_test, y_train, y_test] = getRandomSplitExamples(training_instance_matrix, training_label_vector, m, numClasses);
-	        model = ClassificationKNN.fit(X_train, y_train,'NumNeighbors',numClasses);
-            
-            train_predictions = predict(model, X_train);
-            test_predictions = predict(model, X_test);
-         
- 	        %Training error - it's always 100%
+	        
+			
+			%radial basis (gaussian) SVM (set -v 10 for 10-fold cross
+	        %validation)
+	        model = svmtrain(y_train, X_train, '-s 0 -t 0'); %try linear kernel -t 0 or gaussian -t 2
+	        %Training error - it's always 100%
+	        train_predictions = svmpredict(y_train, X_train, model);
             [currCorrectTrain, totalTested] = findNumCorrect(train_predictions, y_train, numClasses);
 	        numCorrectTrain = numCorrectTrain +  currCorrectTrain;
-            
-            %Testing error
+	        %Testing error
+	        test_predictions = svmpredict(y_test, X_test, model);
             [currCorrectTest, totalTested] = findNumCorrect(test_predictions, y_test, numClasses);
             
 	        numCorrectTest = numCorrectTest +  currCorrectTest;
@@ -79,20 +91,24 @@ function KNearestNeighbors
 	trainAccuracy
     testAccuracy
     
+	%%% Plot "Bias and Variance" %%%
+	
+	fig = figure;
+	hold on;
+
 	X_data = min_endpoint:max_endpoint;
 	plot(X_data, 1 - trainAccuracy, 'b');
 	plot(X_data, 1 - testAccuracy, 'r');
 
-	title('KNN Bias and Variance');
-	xlabel('Number of Training Examples');
+	title('SVM Bias and Variance');
+	xlabel('Number of Training Examples per Class');
 	ylabel('Classification Error');
 	legend('Training', 'Test');
 	% for some reason I can't view the plot, so I save it
 	%print -dpdf fig; % saved in fig.pdf
-	%saveas(fig, 'plot.png')
+	%saveas(fig, 'plot-box-filter.png')
 	
 end
-
 
 function GG = addMeanVariance(G)
     [GX, GY, GZ] = splitData(G);
@@ -408,4 +424,3 @@ function plotGestureData(G, figure_count)
     title('One(first) training example');
     
 end
-

@@ -41,8 +41,8 @@ function KNearestNeighbors
     
     %plotGestureData(training_instance_matrix(1:size(O, 1),:), 4);
     	
-	min_endpoint = 1;
-	max_endpoint = 10;
+	min_endpoint = 5;
+	max_endpoint = 5;
 	
 	trainAccuracy = zeros(1, max_endpoint - min_endpoint + 1);
 	testAccuracy = zeros(numClasses + 1, max_endpoint - min_endpoint + 1);
