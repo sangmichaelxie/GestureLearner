@@ -1,5 +1,5 @@
 
-function classifyGesturesNB  
+function classifyGestures  
     clear all; clear;
     
     %Using the larger test data for training increases performance
@@ -7,19 +7,24 @@ function classifyGesturesNB
     X = load('X.txt');
     Z = load('Z.txt');
 	V = load('V.txt');
-	W = load('W.txt');
+    W = load('W.txt');
+      
+    %num_features = size(O ,2);
+    %plotGestureData(O, 1);
+    %plotGestureData(X, 2);
+    %plotGestureData(Z, 3);
+	%plotGestureData(V, 3);
 	
-	O = truncateGestureData(O);
+    
+	%plotThresholds(O, X,Z,V,W, 4.6);
+	
+    
+    
+    O = truncateGestureData(O);
 	X = truncateGestureData(X);
 	Z = truncateGestureData(Z);
 	V = truncateGestureData(V);
 	W = truncateGestureData(W); 
-    
-    %O = normalizeData(O);
-    %X = normalizeData(X);
-	%Z = normalizeData(Z);
-	%V = normalizeData(V);
-	%W = normalizeData(W);
     
     
     O = smoothGestureData(O);
@@ -28,11 +33,35 @@ function classifyGesturesNB
 	V = smoothGestureData(V);
     W = smoothGestureData(W);
 	
+    O = normalizeData(O);
+    X = normalizeData(X);
+	Z = normalizeData(Z);
+	V = normalizeData(V);
+	W = normalizeData(W);
+	
+    O = addDFT(O);
+    X = addDFT(X);
+    Z = addDFT(Z);
+    V = addDFT(V);
+    W = addDFT(W);
+	
     O = addMeanVariance(O);
     X = addMeanVariance(X);
     Z = addMeanVariance(Z);
     V = addMeanVariance(V);
     W = addMeanVariance(W);
+	
+	
+	
+	
+	
+	
+	
+
+	
+	
+	
+	
     
 	
 	training_instance_matrix = [O; X; Z; V; W;];
@@ -43,7 +72,7 @@ function classifyGesturesNB
     %plotGestureData(training_instance_matrix(1:size(O, 1),:), 4);
     	
 	min_endpoint = 1;
-	max_endpoint = 10;
+	max_endpoint = 1;
 	
 	trainAccuracy = zeros(1, max_endpoint - min_endpoint + 1);
 	testAccuracy = zeros(numClasses + 1, max_endpoint - min_endpoint + 1);
@@ -57,15 +86,17 @@ function classifyGesturesNB
 	    iterations = 1000;
 	    for i = 1:iterations    
 	        [X_train, X_test, y_train, y_test] = getRandomSplitExamples(training_instance_matrix, training_label_vector, m, numClasses);
-	         model = fitNaiveBayes(X_train, y_train);
-         
- 	        %Training error - it's always 100%
- 	        train_predictions = model.predict(X_train);
+	        
+			
+			%radial basis (gaussian) SVM (set -v 10 for 10-fold cross
+	        %validation)
+	        model = svmtrain(y_train, X_train, '-s 0 -t 0'); %try linear kernel -t 0 or gaussian -t 2
+	        %Training error - it's always 100%
+	        train_predictions = svmpredict(y_train, X_train, model);
             [currCorrectTrain, totalTested] = findNumCorrect(train_predictions, y_train, numClasses);
 	        numCorrectTrain = numCorrectTrain +  currCorrectTrain;
-            
-            %Testing error
- 	        test_predictions = model.predict(X_test);
+	        %Testing error
+	        test_predictions = svmpredict(y_test, X_test, model);
             [currCorrectTest, totalTested] = findNumCorrect(test_predictions, y_test, numClasses);
             
 	        numCorrectTest = numCorrectTest +  currCorrectTest;
@@ -77,22 +108,42 @@ function classifyGesturesNB
     end
 
 	trainAccuracy
-    testAccuracy
+	
+    testAccuracy(1:numClasses, :)
+	
+	testAccuracy(numClasses + 1, :)
+	
     
+	%%% Plot "Bias and Variance" %%%
+	
+	fig = figure;
+	hold on;
+
 	X_data = min_endpoint:max_endpoint;
 	plot(X_data, 1 - trainAccuracy, 'b');
-	plot(X_data, 1 - testAccuracy, 'r');
+	plot(X_data, 1 - testAccuracy(6, :), 'r');
 
-	title('Naive Bayes Bias and Variance');
-	xlabel('Number of Training Examples');
+	title('SVM Bias and Variance');
+	xlabel('Number of Training Examples per Class');
 	ylabel('Classification Error');
 	legend('Training', 'Test');
 	% for some reason I can't view the plot, so I save it
 	%print -dpdf fig; % saved in fig.pdf
-	%saveas(fig, 'plot.png')
+	%saveas(fig, 'plot-box-filter.png')
 	
 end
 
+function GG = addDFT(G)
+    [GX, GY, GZ] = splitData(G);
+
+    %21 point FFT
+    fftX = real(fft(GX, 21, 2));
+    fftY = real(fft(GY, 21, 2));
+    fftZ = real(fft(GZ, 21, 2));
+    
+    GG = [G fftX fftY fftZ];
+
+end
 
 function GG = addMeanVariance(G)
     [GX, GY, GZ] = splitData(G);
@@ -106,13 +157,7 @@ function GG = addMeanVariance(G)
 	sY = std(GY, 0, 2);
 	sZ = std(GZ, 0, 2);
     
-    %16 point FFT
-    fftX = real(fft(GX, 21, 2));
-    fftY = real(fft(GY, 21, 2));
-    fftZ = real(fft(GZ, 21, 2));
-    
-    GG = [G uX uY uZ sX sY sZ fftX fftY fftZ];
-
+    GG = [G uX uY uZ sX sY sZ];
 end
 
 function plotThresholds(O,X,Z,V,W,factor)
@@ -233,16 +278,27 @@ function GG = truncateGestureExample(G)
 	% Truncating a fixed small amount doesn't appear to have any effect on
 	% accuracy.
 	
-	noiseDelta = 5;
+	noiseDelta = 10;
 	
-	X = X(1, (noiseDelta + 1):100);
+	X = X(1, (noiseDelta + 1):size(X, 2));
 	%GX(:, (100 - noiseDelta):100) = 0;
 	
-	Y = Y(1, (noiseDelta + 1):100);
+	Y = Y(1, (noiseDelta + 1):size(Y, 2));
 	%GY(:, (100 - noiseDelta):100) = 0;
 	
-	Z = Z(1, (noiseDelta + 1):100);
+	Z = Z(1, (noiseDelta + 1):size(Z, 2));
 	%GZ(:, (100 - noiseDelta):100) = 0;
+	
+	
+	%noiseDelta2 = 1;
+	
+	%X = X(1, 1:(size(X, 2) - noiseDelta2));
+	%GX(:, (100 - noiseDelta):100) = 0;
+	
+	%Y = Y(1, 1:(size(Y, 2) - noiseDelta2));
+	%GY(:, (100 - noiseDelta):100) = 0;
+	
+	%Z = Z(1, 1:(size(Z, 2) - noiseDelta2));
 	
 	
 	
@@ -264,6 +320,9 @@ function GG = truncateGestureExample(G)
     %noiseNormThreshold = std(G)^0.5 / 4.6; %4.3 was good
 	noiseNormThreshold = std(G)^0.5 / 4.57;
 	
+	%noiseNormThreshold = 2.02 / std(G)^0.5;
+	
+	%noiseNormThreshold = 0.5;
 	
 	% Truncate from left side
 	
@@ -386,7 +445,7 @@ function output = smoothData(input)
 end
 
 function [X,Y,Z] = splitData(G)
-	d = floor(size(G, 2) / 3)
+	d = floor(size(G, 2) / 3);
     X = G(:, 1:d);
     Y = G(:, (d + 1):(2 * d));
     Z = G(:, (2 * d + 1):(3 * d)); 
