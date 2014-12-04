@@ -1,4 +1,5 @@
 
+
 function classifyGestures  
     clear all; clear;
     
@@ -17,6 +18,7 @@ function classifyGestures
 	
     
 	%plotThresholds(O, X,Z,V,W, 4.6);
+	
     
     
     O = truncateGestureData(O);
@@ -25,12 +27,6 @@ function classifyGestures
 	V = truncateGestureData(V);
 	W = truncateGestureData(W); 
     
-    %O = normalizeData(O);
-    %X = normalizeData(X);
-	%Z = normalizeData(Z);
-	%V = normalizeData(V);
-	%W = normalizeData(W);
-    
     
     O = smoothGestureData(O);
 	X = smoothGestureData(X);
@@ -38,13 +34,25 @@ function classifyGestures
 	V = smoothGestureData(V);
     W = smoothGestureData(W);
 	
+    %O = normalizeData(O);
+    %X = normalizeData(X);
+	%Z = normalizeData(Z);
+	%V = normalizeData(V);
+	%W = normalizeData(W);
+	
+    O = addDFT(O);
+    X = addDFT(X);
+    Z = addDFT(Z);
+    V = addDFT(V);
+    W = addDFT(W);
+	
     O = addMeanVariance(O);
     X = addMeanVariance(X);
     Z = addMeanVariance(Z);
     V = addMeanVariance(V);
     W = addMeanVariance(W);
-    
 	
+
 	training_instance_matrix = [O; X; Z; V; W;];
 	
     training_label_vector = [zeros(size(O, 1), 1); ones(size(X, 1), 1); 2 * ones(size(Z, 1), 1); 3 * ones(size(V, 1), 1); 4 * ones(size(W,1),1)];
@@ -53,7 +61,7 @@ function classifyGestures
     %plotGestureData(training_instance_matrix(1:size(O, 1),:), 4);
     	
 	min_endpoint = 1;
-	max_endpoint = 10;
+	max_endpoint = 1;
 	
 	trainAccuracy = zeros(1, max_endpoint - min_endpoint + 1);
 	testAccuracy = zeros(numClasses + 1, max_endpoint - min_endpoint + 1);
@@ -89,7 +97,11 @@ function classifyGestures
     end
 
 	trainAccuracy
-    testAccuracy
+	
+    testAccuracy(1:numClasses, :)
+	
+	testAccuracy(numClasses + 1, :)
+	
     
 	%%% Plot "Bias and Variance" %%%
 	
@@ -110,6 +122,18 @@ function classifyGestures
 	
 end
 
+function GG = addDFT(G)
+    [GX, GY, GZ] = splitData(G);
+
+    %21 point FFT
+    fftX = real(fft(GX, 21, 2));
+    fftY = real(fft(GY, 21, 2));
+    fftZ = real(fft(GZ, 21, 2));
+    
+    GG = [G fftX fftY fftZ];
+
+end
+
 function GG = addMeanVariance(G)
     [GX, GY, GZ] = splitData(G);
 
@@ -122,13 +146,7 @@ function GG = addMeanVariance(G)
 	sY = std(GY, 0, 2);
 	sZ = std(GZ, 0, 2);
     
-    %16 point FFT
-    fftX = real(fft(GX, 21, 2));
-    fftY = real(fft(GY, 21, 2));
-    fftZ = real(fft(GZ, 21, 2));
-    
-    GG = [G uX uY uZ sX sY sZ fftX fftY fftZ];
-
+    GG = [G uX uY uZ sX sY sZ];
 end
 
 function plotThresholds(O,X,Z,V,W,factor)
@@ -249,16 +267,27 @@ function GG = truncateGestureExample(G)
 	% Truncating a fixed small amount doesn't appear to have any effect on
 	% accuracy.
 	
-	noiseDelta = 5;
+	noiseDelta = 10;
 	
-	X = X(1, (noiseDelta + 1):100);
+	X = X(1, (noiseDelta + 1):size(X, 2));
 	%GX(:, (100 - noiseDelta):100) = 0;
 	
-	Y = Y(1, (noiseDelta + 1):100);
+	Y = Y(1, (noiseDelta + 1):size(Y, 2));
 	%GY(:, (100 - noiseDelta):100) = 0;
 	
-	Z = Z(1, (noiseDelta + 1):100);
+	Z = Z(1, (noiseDelta + 1):size(Z, 2));
 	%GZ(:, (100 - noiseDelta):100) = 0;
+	
+	
+	%noiseDelta2 = 1;
+	
+	%X = X(1, 1:(size(X, 2) - noiseDelta2));
+	%GX(:, (100 - noiseDelta):100) = 0;
+	
+	%Y = Y(1, 1:(size(Y, 2) - noiseDelta2));
+	%GY(:, (100 - noiseDelta):100) = 0;
+	
+	%Z = Z(1, 1:(size(Z, 2) - noiseDelta2));
 	
 	
 	
@@ -280,6 +309,9 @@ function GG = truncateGestureExample(G)
     %noiseNormThreshold = std(G)^0.5 / 4.6; %4.3 was good
 	noiseNormThreshold = std(G)^0.5 / 4.57;
 	
+	%noiseNormThreshold = 2.02 / std(G)^0.5;
+	
+	%noiseNormThreshold = 0.5;
 	
 	% Truncate from left side
 	
