@@ -46,11 +46,11 @@ function classifyGestures
     V = addDFT(V);
     W = addDFT(W);
 	
-    O = addMeanVariance(O);
-    X = addMeanVariance(X);
-    Z = addMeanVariance(Z);
-    V = addMeanVariance(V);
-    W = addMeanVariance(W);
+    %O = addMeanVariance(O);
+    %X = addMeanVariance(X);
+    %Z = addMeanVariance(Z);
+    %V = addMeanVariance(V);
+    %W = addMeanVariance(W);
 	
 
 	training_instance_matrix = [O; X; Z; V; W;];
