@@ -1,5 +1,6 @@
-function KNearestNeighbors  
-     clear all; clear;
+
+function classifyGesturesNB  
+    clear all; clear;
     
     %Using the larger test data for training increases performance
     O = load('O.txt');
@@ -7,89 +8,75 @@ function KNearestNeighbors
     Z = load('Z.txt');
 	V = load('V.txt');
 	W = load('W.txt');
+      
+    num_features = size(O ,2);
+    plotGestureData(O, 1);
+    plotGestureData(X, 2);
+    plotGestureData(Z, 3);
+	plotGestureData(V, 3);
+	plotGestureData(W, 3);
 	
-	O = truncateGestureData(O);
-	X = truncateGestureData(X);
-	Z = truncateGestureData(Z);
-	V = truncateGestureData(V);
-	W = truncateGestureData(W); 
+	smoothO = smoothGestureData(O);
+	smoothX = smoothGestureData(X);
+	smoothZ = smoothGestureData(Z);
+	smoothV = smoothGestureData(V);
+	smoothW = smoothGestureData(W);
     
-    %O = normalizeData(O);
-    %X = normalizeData(X);
-	%Z = normalizeData(Z);
-	%V = normalizeData(V);
-	%W = normalizeData(W);
+    %training_instance_matrix = [O; X; Z;];
+	training_instance_matrix = [smoothO; smoothX; smoothZ; smoothV; smoothW;];
+    training_label_vector = [zeros(size(O, 1), 1); 2 * ones(size(Z, 1), 1); 3 * ones(size(Z, 1), 1); 4 * ones(size(Z, 1), 1); 5 * ones(size(Z, 1), 1);];
     
+    %training_instance_matrix = zeroOutAndShift(training_instance_matrix);
+    %zeroing out doesn't work
     
-    O = smoothGestureData(O);
-	X = smoothGestureData(X);
-	Z = smoothGestureData(Z);
-	V = smoothGestureData(V);
-    W = smoothGestureData(W);
-	
-    O = addMeanVariance(O);
-    X = addMeanVariance(X);
-    Z = addMeanVariance(Z);
-    V = addMeanVariance(V);
-    W = addMeanVariance(W);
-    
-	
-	training_instance_matrix = [O; X; Z; V; W;];
-	
-    training_label_vector = [zeros(size(O, 1), 1); ones(size(X, 1), 1); 2 * ones(size(Z, 1), 1); 3 * ones(size(V, 1), 1); 4 * ones(size(W,1),1)];
-    numClasses = 5;
-    
+    %Smoothing with box filter seems to work better than gaussian filter
+    training_instance_matrix = smoothts(training_instance_matrix, 'b', 25);
     %plotGestureData(training_instance_matrix(1:size(O, 1),:), 4);
-    	
-	min_endpoint = 1;
-	max_endpoint = 10;
+    
+    %m = round(size(training_instance_matrix, 1) * 7 / 10);
+	
+	min_endpoint = round(size(training_instance_matrix, 1) * 7 / 10);
+	max_endpoint = round(size(training_instance_matrix, 1) * 7 / 10);
 	
 	trainAccuracy = zeros(1, max_endpoint - min_endpoint + 1);
-	testAccuracy = zeros(numClasses + 1, max_endpoint - min_endpoint + 1);
+	testAccuracy = zeros(1, max_endpoint - min_endpoint + 1);
     
-    %m is examples from each class
 	for m = min_endpoint:max_endpoint
-	    numCorrectTest = zeros(numClasses, 1);
-	    numCorrectTrain = zeros(numClasses, 1);
-        totalTest = zeros(numClasses, 1);
+	    numCorrect = 0;
+	    numCorrectTrain = 0;
 	    %Resample
 	    iterations = 1000;
-	    for i = 1:iterations    
-	        [X_train, X_test, y_train, y_test] = getRandomSplitExamples(training_instance_matrix, training_label_vector, m, numClasses);
-	        model = ClassificationKNN.fit(X_train, y_train,'NumNeighbors',numClasses);
-            
-            train_predictions = predict(model, X_train);
-            test_predictions = predict(model, X_test);
+	    for i = 1:iterations
+	        [X_train, X_test, y_train, y_test] = getRandomSplitExamples(training_instance_matrix, training_label_vector, m);
+	        model = fitNaiveBayes(X_train, y_train);
          
  	        %Training error - it's always 100%
-            [currCorrectTrain, totalTested] = findNumCorrect(train_predictions, y_train, numClasses);
-	        numCorrectTrain = numCorrectTrain +  currCorrectTrain;
+ 	        train_predictions = model.predict(X_train);
+
             
             %Testing error
-            [currCorrectTest, totalTested] = findNumCorrect(test_predictions, y_test, numClasses);
-            
-	        numCorrectTest = numCorrectTest +  currCorrectTest;
-            totalTest = totalTest + totalTested;
+ 	        test_predictions = model.predict(X_test);
 	    end
-	    trainAccuracy(1, m - min_endpoint + 1) = sum(numCorrectTrain) / (iterations * numClasses * m);
-        testAccuracy(1:numClasses, m - min_endpoint + 1) = numCorrectTest ./ totalTest;
-	    testAccuracy(numClasses + 1, m - min_endpoint + 1) = sum(numCorrectTest) / (iterations * (size(training_instance_matrix, 1) - numClasses * m));  
-    end
+	    trainAccuracy(1, m - min_endpoint + 1) = numCorrectTrain / (iterations * m)
+	    testAccuracy(1, m - min_endpoint + 1) = numCorrect / (iterations * (size(training_instance_matrix, 1) - m))   
+	end
+	
+	%%% Plot "Bias and Variance" %%%
+	
+	fig = figure;
+	hold on;
 
-	trainAccuracy
-    testAccuracy
-    
 	X_data = min_endpoint:max_endpoint;
 	plot(X_data, 1 - trainAccuracy, 'b');
 	plot(X_data, 1 - testAccuracy, 'r');
 
-	title('KNN Bias and Variance');
+	title('SVM Bias and Variance');
 	xlabel('Number of Training Examples');
 	ylabel('Classification Error');
 	legend('Training', 'Test');
 	% for some reason I can't view the plot, so I save it
-	%print -dpdf fig; % saved in fig.pdf
-	%saveas(fig, 'plot.png')
+	print -dpdf fig; % saved in fig.pdf
+	saveas(fig, 'plot.png')
 	
 end
 
@@ -386,7 +373,7 @@ function output = smoothData(input)
 end
 
 function [X,Y,Z] = splitData(G)
-	d = floor(size(G, 2) / 3);
+	d = floor(size(G, 2) / 3)
     X = G(:, 1:d);
     Y = G(:, (d + 1):(2 * d));
     Z = G(:, (2 * d + 1):(3 * d)); 
@@ -408,4 +395,3 @@ function plotGestureData(G, figure_count)
     title('One(first) training example');
     
 end
-
