@@ -38,14 +38,37 @@ function classifyGestures
 	V = smoothGestureData(V);
     W = smoothGestureData(W);
 	
-    O = addMeanVariance(O);
-    X = addMeanVariance(X);
     Z = addMeanVariance(Z);
+    O = addMeanVariance(O);
+ 
     V = addMeanVariance(V);
     W = addMeanVariance(W);
+    X = addMeanVariance(X);
     
+    
+  
 	
 	training_instance_matrix = [O; X; Z; V; W;];
+    avg = mean(training_instance_matrix,1);
+
+    
+    A = training_instance_matrix';
+    abar = mean(A,2);
+    Atil = A - abar*ones(1,size(A, 2));
+    [U,S,V] = svd(Atil);
+    Q = U(:,1:2);
+    coords = Q'*A;
+    figure; 
+    plot(coords(1,1:31), coords(2,1:31),'*');
+    hold on;
+    plot(coords(1,32:62), coords(2,32:62),'.');
+    plot(coords(1,63:93), coords(2,63:93),'o');
+    plot(coords(1,94:124), coords(2,94:124),'^');
+    plot(coords(1,125:155), coords(2,125:155),'d');
+    hold off;
+    axis equal;
+    
+    training_instance_matrix = training_instance_matrix;
 	
     training_label_vector = [zeros(size(O, 1), 1); ones(size(X, 1), 1); 2 * ones(size(Z, 1), 1); 3 * ones(size(V, 1), 1); 4 * ones(size(W,1),1)];
     numClasses = 5;
@@ -53,7 +76,7 @@ function classifyGestures
     %plotGestureData(training_instance_matrix(1:size(O, 1),:), 4);
     	
 	min_endpoint = 1;
-	max_endpoint = 10;
+	max_endpoint = 1;
 	
 	trainAccuracy = zeros(1, max_endpoint - min_endpoint + 1);
 	testAccuracy = zeros(numClasses + 1, max_endpoint - min_endpoint + 1);
@@ -114,20 +137,38 @@ function GG = addMeanVariance(G)
     [GX, GY, GZ] = splitData(G);
 
 	
-	uX = mean(GX, 2);
-	uY = mean(GY, 2);
-	uZ = mean(GZ, 2);
+	%uX = mean(GX, 2);
+	%uY = mean(GY, 2);
+	%uZ = mean(GZ, 2);
 	
-	sX = std(GX, 0, 2);
-	sY = std(GY, 0, 2);
-	sZ = std(GZ, 0, 2);
+	%sX = std(GX, 0, 2);
+	%sY = std(GY, 0, 2);
+	%sZ = std(GZ, 0, 2);
     
     %16 point FFT
-    fftX = real(fft(GX, 21, 2));
-    fftY = real(fft(GY, 21, 2));
-    fftZ = real(fft(GZ, 21, 2));
     
-    GG = [G uX uY uZ sX sY sZ fftX fftY fftZ];
+    fs = 50; %50Hz
+    N = 22;
+    L = 100;
+    fftX = abs(fft(GX, N, 2));
+    fftY = abs(fft(GY, N, 2));
+    fftZ = abs(fft(GZ, N, 2));
+    
+    fftX = fftX(:, 1:((N+1)/2))
+    fftY = fftY(:, 1:((N+1)/2));
+    fftZ = fftZ(:, 1:((N+1)/2));
+    
+    
+    %figure;
+    %f = fs/2*linspace(0,1,N/2+1);
+    %for j = 1:31
+    %    plot(f,2*abs(fftX(j,1:N/2+1))) 
+    %    hold on;
+    %end
+    %hold off;
+    %title('Single-Sided Amplitude Spectrum');
+    
+    GG = [G fftX fftY fftZ];
 
 end
 

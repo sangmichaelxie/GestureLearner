@@ -39,8 +39,6 @@ public class TrainingFragment extends Fragment {
 	private ToggleButton toggleLearnModeButton;
 	private boolean isLearning;
 
-	File dir, root; //File storage
-
 	//Creates new instances of fragment
     public static TrainingFragment newInstance() {
         return new TrainingFragment();
@@ -53,9 +51,6 @@ public class TrainingFragment extends Fragment {
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		root = android.os.Environment.getExternalStorageDirectory();
-		dir = new File (root.getAbsolutePath() + saveDir);
-		dir.mkdirs();
 	}
 
     @Override
@@ -131,8 +126,6 @@ public class TrainingFragment extends Fragment {
 		toggleLearnModeButton.setChecked(false);
 	}
 
-	private final String saveDir = "/GestureLearner";
-
 	public void collectData(double[] xyz) {
 		if(numFilled < gestureDataContainer[0].length) {
 			gestureDataContainer[0][numFilled] = xyz[0];
@@ -151,28 +144,19 @@ public class TrainingFragment extends Fragment {
 				/*writes a training example in format [x1.....xn y1....yn z1.....zn]*/
 				
 				for (int i = 0; i < gestureDataContainer[0].length; i++) { //Data
-					writeToFile(saveFileName, gestureDataContainer[0][i] + " ");
+					MainActivity.writeToFile(saveFileName, gestureDataContainer[0][i] + " ");
 				}
 				for (int i = 0; i < gestureDataContainer[1].length; i++) { //Data
-					writeToFile(saveFileName, gestureDataContainer[1][i] + " ");
+					MainActivity.writeToFile(saveFileName, gestureDataContainer[1][i] + " ");
 				}
 				for (int i = 0; i < gestureDataContainer[2].length; i++) { //Data
-					writeToFile(saveFileName, gestureDataContainer[2][i] + " ");
+					MainActivity.writeToFile(saveFileName, gestureDataContainer[2][i] + " ");
 				}
-				writeLineBreakToFile(saveFileName);
+				MainActivity.writeLineBreakToFile(saveFileName);
 			} catch(Exception e) {
 				e.printStackTrace();
 			}
 
-			double[][] data = readFromFile(saveFileName);
-			System.out.println(data.length);
-			System.out.println(data[0].length);
-			for(int i = 0; i < data.length; i++) {
-				for(int j = 0; j < data[0].length; j++) {
-					System.out.print(data[i][j] + " ");
-				}
-				System.out.println();
-			}
 			numFilled = 0;
 
 			try {
@@ -185,78 +169,5 @@ public class TrainingFragment extends Fragment {
 		}
 	}
 
-
-	private void writeToFile(String filename, String data) {
-		try {
-			File file = new File(dir, filename);
-			BufferedWriter bw = new BufferedWriter(new FileWriter(file, true));
-			bw.write(data);
-			bw.close();
-		}
-		catch (IOException e) {
-			Log.e(TAG, "File write failed: " + e.toString());
-		}
-	}
-
-	private void writeLineBreakToFile(String filename) {
-		try {
-			File file = new File(dir, filename);
-			BufferedWriter bw = new BufferedWriter(new FileWriter(file, true));
-			bw.newLine();
-			bw.close();
-		}
-		catch (IOException e) {
-			Log.e(TAG, "File write failed: " + e.toString());
-		}
-	}
-
-
-	/*returns an m by n array of doubles, m being the number of training examples, and n the length of each training example*/
-	private double[][] readFromFile(String filename) {
-		ArrayList<double[]> container = new ArrayList<double[]>();
-		try {
-			File file = new File(dir, filename);
-			BufferedReader buf = new BufferedReader(new FileReader(file));
-			String receiveString = "";
-			while ( (receiveString = buf.readLine()) != null ) {
-				String[] trainingExampleStringArr = receiveString.split(" ");
-				double[] trainingExample = new double[trainingExampleStringArr.length];
-
-				for(int i = 0; i < trainingExampleStringArr.length; i++) {
-					trainingExample[i] = Double.valueOf(trainingExampleStringArr[i]);
-				}
-				container.add(trainingExample);
-			}
-			buf.close();
-			double[][] ret = new double[container.size()][];
-			return container.toArray(ret);
-		}
-		catch (FileNotFoundException e) {
-			Log.e(TAG, "File not found: " + e.toString());
-		}
-		catch (IOException e) {
-			Log.e(TAG, "Can not read file: " + e.toString());
-		}
-		return null;
-	}
-
-	private boolean checkExternalMedia(){
-		boolean mExternalStorageAvailable = false;
-		boolean mExternalStorageWriteable = false;
-		String state = Environment.getExternalStorageState();
-
-		if (Environment.MEDIA_MOUNTED.equals(state)) {
-			// Can read and write the media
-			mExternalStorageAvailable = mExternalStorageWriteable = true;
-		} else if (Environment.MEDIA_MOUNTED_READ_ONLY.equals(state)) {
-			// Can only read the media
-			mExternalStorageAvailable = true;
-			mExternalStorageWriteable = false;
-		} else {
-			// Can't read or write
-			mExternalStorageAvailable = mExternalStorageWriteable = false;
-		}
-		return mExternalStorageAvailable && mExternalStorageWriteable;
-	}
 
 }
